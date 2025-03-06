@@ -185,10 +185,14 @@ class Forum(models.Model):
 class Thread(models.Model):
 
     TITLE_MAX_LENGTH = 250
+
+    TOPIC_MAX_LENGTH = 20000
     
     forum = models.ForeignKey(Forum, on_delete=models.CASCADE)
     
     title = models.CharField(max_length=TITLE_MAX_LENGTH)
+
+    topic = models.CharField(max_length=TOPIC_MAX_LENGTH)
     
     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     

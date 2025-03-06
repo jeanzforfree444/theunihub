@@ -12,6 +12,7 @@ class HubRegistrationView(RegistrationView):
         return reverse('rango:register_profile')
 
 urlpatterns = [
+    path('', views.IndexView.as_view(), name='index'),
     path('main/', include('main.urls')),
     path('admin/', admin.site.urls),
     path('accounts/register/', HubRegistrationView.as_view(), name='registration_register'),
