@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    About Us
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">About Us</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    All about the people behind <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+                
+                {% if visits > 1 %}
+                    <p class="jumbotron-info">You have visited our website {{ visits }} times.</p>
+                {% else %}
+                    <p class="jumbotron-info">You have visited our website {{ visits }} time.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Our Team</h5>
+
+                        <div class="row">
+                            {% for member in team_members %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="list-group-item">
+                                        <div class="card-body text-center">
+                                            {% if member.profile_picture %}
+                                                <img src="{{ MEDIA_URL }}{{ member.profile_picture }}" alt="{{ member.first_name }} {{ member.last_name }}" class="rounded-circle mb-2" height="100" width="100">
+                                            {% endif %}
+
+                                            <h6><a href="{% url 'main:profile' member.user.username %}">{{ member.first_name }} {{ member.last_name }}</a></h6>
+                                            
+                                            <p class="text-muted">{{ member.role }}</p>
+                                            
+                                            <p class="card-text">{{ member.bio }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Our Mission</h5>
+
+                        <p class="card-text">
+                            To provide a platform for university students to share their experiences, seek guidance, and access valuable academic, career, and well-being resources. At our core, we believe that education is a powerful tool that brings people together, and through this platform, we aim to build a supportive community where students can navigate university life with confidence. We also strive to give back by supporting student scholarships, mental health initiatives, and career development programs, ensuring that every student has the opportunity to succeed.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h5>The Vision</h5>
+
+                        <p class="card-text">
+                            To become the go-to resource for university students seeking advice, insights, and support throughout their academic journey. We envision a future where students can seamlessly access information on studying, career paths, financial aid, and personal development. Additionally, we are committed to shaping the future of education by partnering with universities and organizations to provide students with the tools they need to excel. Through this initiative, we aim to bridge gaps in education, career readiness, and student well-being.
+                        </p>
+                    
+                        <p class="card-text">
+                            We have detailed our efforts and initiatives on our <a href="{% url 'main:mission_vision' %}">Our Mission, The Vision</a> page.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h5>Our Values</h5>
+                    
+                        <p class="card-text">
+                            You can read more about our values on our <a href="{% url 'main:values' %}">Values</a> page.
+                        </p>
+                        
+                        <ul class="list-group">
+                            <li class="list-group-item"><strong>Support</strong> - fostering a strong community where students help each other</li>
+                            <li class="list-group-item"><strong>Integrity</strong> - ensuring accurate and reliable information</li>
+                            <li class="list-group-item"><strong>Accessibility</strong> - making resources available to all students</li>
+                            <li class="list-group-item"><strong>Growth</strong> - promoting lifelong learning and career development</li>
+                            <li class="list-group-item"><strong>Transparency</strong> - being open about our mission and partnerships</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Our Partners</h5>
+
+                        <p class="card-text">
+                            We are proud to be partnered with the following educational organizations:
+                        </p>
+
+                        <p class="card-text">
+                            <ul class="list-group">
+                                <li class="list-group-item"><a href="https://www.ucas.com/">UCAS</a></li>
+                                <li class="list-group-item"><a href="https://www.nus.org.uk/">National Union of Students (NUS)</a></li>
+                                <li class="list-group-item"><a href="https://www.britishcouncil.org/">British Council</a></li>
+                                <li class="list-group-item"><a href="https://www.universitiesuk.ac.uk/">Universities UK</a></li>
+                                <li class="list-group-item"><a href="https://www.qaa.ac.uk/">Quality Assurance Agency for Higher Education (QAA)</a></li>
+                                <li class="list-group-item"><a href="https://www.scholarshipportal.com/">Scholarship Portal</a></li>
+                            </ul>
+                        </p>
+
+                        <p class="card-text">
+                            Their support has been invaluable in helping us achieve our mission and vision. We are grateful for their continued collaboration in improving student experiences and educational opportunities.
+                        </p>
+                    </div>
+    
+                    <div class="card-body">
+                        <h5>Our Sponsors</h5>
+
+                        <p class="card-text">
+                            We are grateful to be sponsored by the following organizations that support student success:
+                        </p>
+
+                        <p class="card-text">
+                            <ul class="list-group">
+                                <li class="list-group-item"><a href="https://www.studentfinance.gov.uk/">Student Finance England</a></li>
+                                <li class="list-group-item"><a href="https://www.saas.gov.uk/">Student Finance Scotland</a></li>
+                                <li class="list-group-item"><a href="https://www.unidays.com/">UNiDAYS</a></li>
+                                <li class="list-group-item"><a href="https://www.studentbeans.com/">Student Beans</a></li>
+                                <li class="list-group-item"><a href="https://www.chegg.com/">Chegg</a></li>
+                                <li class="list-group-item"><a href="https://www.coursera.org/">Coursera</a></li>
+                            </ul>
+                        </p>
+
+                        <p class="card-text">
+                            Their support has been instrumental in providing resources, discounts, and tools to help students navigate university life. We look forward to continuing our work with them to enhance student experiences and opportunities.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

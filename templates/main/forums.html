@@ -1,0 +1,21 @@
+<ul class="nav flex-column">
+    {% if forums %}
+        {% for f in forums %}
+            {% if f == current_forum %}
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'main:thread_list' f.slug %}">
+                        <span data-feather="file-text"></span>{{ f.name }}
+                    </a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'main:thread_list' f.slug %}">
+                        <span data-feather="file-text"></span>{{ f.name }}
+                    </a>
+                </li>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <li class="nav-link">There are no forums yet.</li>
+    {% endif %}
+</ul>

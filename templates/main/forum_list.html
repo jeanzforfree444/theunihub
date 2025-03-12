@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Forums
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Forums</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    Discuss everything university and student-life related on <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+            
+                <p class="jumbotron-info">
+                    You can start threads and posts on any of the categories.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-12">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="card-title">Forums on <span class="company-name"><i>TheUniHub</i></span></h4>
+                            
+                            {% if user.is_staff %}
+                                <a href="{% url 'main:add_forum' %}" class="btn btn-primary btn-sm">
+                                    <span data-feather="edit"></span> Create Forum
+                                </a>
+                            {% endif %}
+                        </div>
+                        
+                        <div id="forum-listing">
+                            <ul class="list-group mt-3">
+                                {% for forum in forums %}
+                                    <li class="list-group-item mb-3">
+                                        <a href="{% url 'main:thread_list' forum.slug %}">{{ forum.name }}</a>
+                                        
+                                        <p>{{ forum.description }}</p>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

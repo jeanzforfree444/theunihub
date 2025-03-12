@@ -1,0 +1,59 @@
+{% extends 'main/base.html' %}
+
+{% block title_block %}
+    Sign In
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Sign In</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    Sign into your <span class="company-name"><i>TheUniHub</i></span> account here.
+                </h3>
+                
+                <p class="jumbotron-info">
+                    You will be able to interact more with the website by doing this.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <form class="form-signin" role="form" method="post" action=".">
+            {% csrf_token %}
+
+            {% if form.errors %}
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> Please correct the following issues.
+            
+                    <ul>
+                        <li>Username: Username could be entered incorrectly.</li>
+            
+                        <li>Password: Password could be entered incorrectly.</li>
+                    </ul>
+                </div>
+            {% endif %}
+
+            <label for="inputUsername" class="sr-only">Username</label>
+            
+            <input type="text" name="username" id="id_username" class="form-control" placeholder="Username" required autofocus>
+            
+            <br />
+            
+            <label for="inputPassword" class="sr-only">Password</label>
+            
+            <input type="password" name="password" id="id_password" class="form-control" placeholder="Password" required>
+            
+            <br />
+            
+            <button class="btn btn-lg btn-primary btn-block" type="submit" value="Submit">Sign In</button>
+        </form>
+    </div><br />
+
+    <p>
+        Not registered? <a href="{% url 'registration_register' %}">Register here!</a>
+    </p>
+{% endblock %}

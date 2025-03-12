@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Categories
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Categories</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    Read and write about university and student-life related on <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+            
+                <p class="jumbotron-info">
+                    You can create articles and comments on any of the categories.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-12">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title">Categories on <span class="company-name"><i>TheUniHub</i></span></h4>
+                            
+                            {% if user.is_staff %}
+                                <a href="{% url 'main:add_category' %}" class="btn btn-primary btn-sm">
+                                    <span data-feather="edit"></span> Add Category
+                                </a>
+                            {% endif %}
+                        </div>
+                        
+                        <div id="category-listing">
+                            <ul class="list-group mt-3">
+                                {% for category in categories %}
+                                    <li class="list-group-item mb-3">
+                                        <a href="{% url 'main:show_category' category.slug %}">{{ category.name }}</a>
+                                        
+                                        <p>{{ category.description }}</p>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

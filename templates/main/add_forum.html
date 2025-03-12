@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Create a Forum
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Create a Forum</h1>
+
+            <div>
+                <h3 class="jumborton-subject">
+                    This forum will allow users to contribute to <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+            
+                <p class="jumbotron-info">Include a title and description to give users the best experience.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-12">
+                    <div class="card-body">
+                        <div class="card-text">
+                            <form role="form" id="forum_form" method="post" action="{% url 'main:add_forum' %}">
+                                {% csrf_token %}
+
+                                {% if form.errors %}
+                                    <div class="alert alert-danger">
+                                        <strong>Error:</strong> Please correct the issues below.
+                                        <ul>
+                                            {% for field in form %}
+                                                {% for error in field.errors %}
+                                                    <li>{{ field.label }}: {{ error }}</li>
+                                                {% endfor %}
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+
+                                {% for hidden in form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                                {% for field in form.visible_fields %}
+                                    {{ field.errors }}
+                                    {{ field.help_text }}<br />
+                                    {{ field }}<br />
+                                {% endfor %}
+                                    <br />
+
+                                    <button class="btn btn-primary btn-sm" type="submit" name="submit">
+                                        <span data-feather="edit"></span> Create Forum
+                                    </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <br>
+        
+        <a href="{% url 'main:forum_list' %}">
+            <span data-feather="arrow-left"></span> Back to Forums
+        </a>
+    </div>
+{% endblock %}

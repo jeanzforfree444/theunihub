@@ -1,0 +1,21 @@
+<ul class="nav flex-column">
+    {% if favourites %}
+        {% for a in favourites %}
+            {% if a == current_article %}
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'main:show_article' a.category.slug a.slug %}">
+                        <span data-feather="book-open"></span>{{ a.title }}
+                    </a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'main:show_article' a.category.slug a.slug %}">
+                        <span data-feather="book-open"></span>{{ a.title }}
+                    </a>
+                </li>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <li class="nav-link">You don't have any favourite articles yet.</li>
+    {% endif %}
+</ul>

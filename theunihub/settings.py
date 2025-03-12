@@ -160,3 +160,10 @@ MEDIA_URL = '/media/'
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [STATIC_DIR, ]
+
+
+# Emailing (Contact)
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+CONTACT_EMAIL = 'info@theunihub.co.uk'

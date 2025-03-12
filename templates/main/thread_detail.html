@@ -1,0 +1,253 @@
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    {% if thread %}
+        {{ thread.title }}
+    {% else %}
+        Unknown Thread
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if thread %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h1 class="jumbotron-heading">{{ thread.title }}</h1>
+                    
+                    <div class="d-flex">
+                        <form action="{% url 'main:save_thread' thread.slug %}" method="POST">
+                            {% csrf_token %}
+                    
+                            {% if thread in request.user.userprofile.saved_threads.all %}
+                                <button type="submit" id="save-btn" class="btn btn-danger btn-sm"><span data-feather="minus-circle"></span> Unsave</button>
+                            {% else %}
+                                <button type="submit" id="save_btn" class="btn btn-primary btn-sm"><span data-feather="plus-circle"></span> Save</button>
+                            {% endif %}
+                        </form>
+
+                        {% if user.is_authenticated and user == thread.author %}
+                            <a href="{% url 'main:edit_thread' thread.forum.slug thread.slug %}" class="ml-3 btn btn-warning btn-sm">
+                                <span data-feather="edit"></span> Edit Thread
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="jumborton-subject">
+                        Search, view, and post on this thread.
+                    </h3>
+
+                    <p class="jumbotron-detail">
+                        Started by
+                        {% if thread.author %}
+                            <a href="{% url 'main:profile' thread.author.username %}">
+                                {% if thread.author.userprofile.first_name and thread.author.userprofile.last_name %}
+                                    {{ thread.author.userprofile.first_name }} {{ thread.author.userprofile.last_name }}
+                                {% else %}
+                                    {{ thread.author.username }}
+                                {% endif %}
+                            </a>
+                        {% else %}
+                            Deleted User
+                        {% endif %}
+                        on {{ thread.started_on }}
+                    </p>
+
+                    {% if thread.updated_on %}
+                        <p class="jumbotron-detail">Updated on {{ thread.updated_on }}</p>
+                    {% endif %}
+
+                    <p class="jumbotron-info">
+                        {{ thread.topic|safe }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            {% if poll %}
+                                <div class="mb-4">
+                                    <h5>Poll: {{ poll.question }}</h5>
+                                    <form id="pollForm" method="post" data-vote-url="{% url 'main:poll_vote' forum_name_slug=thread.forum.slug thread_title_slug=thread.slug %}" data-csrf-token="{{ csrf_token }}">
+                                        {% csrf_token %}
+                                        {% for option in poll_options %}
+                                        <div class="form-check">
+                                            <input type="radio" name="option_id" value="{{ option.id }}" id="option_{{ option.id }}" class="form-check-input">
+                                            <label for="option_{{ option.id }}" class="form-check-label">
+                                                {{ option.option_text }} ({{ option.votes }} votes)
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                        <button class="btn btn-primary btn-sm mt-3" type="submit" name="submit">
+                                            <span data-feather="check-square"></span> Vote
+                                        </button>
+                                        <a href="#" id="clearChoice" class="btn btn-link btn-sm mt-3">Clear my choice</a>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <div class="mb-4">
+                                    <h5>Poll</h5>
+            
+                                    <p class="card-text-mt-3">There is no poll for this thread yet.</p>
+                                </div>
+                            {% endif %}
+            
+                            <hr>
+
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5>Discussion</h5>
+            
+                                    {% if not poll %}
+                                        {% if user.is_staff %}
+                                            <a href="{% url 'main:add_poll' forum_name_slug=thread.forum.slug thread_title_slug=thread.slug %}" class="btn btn-primary btn-sm">
+                                                <span data-feather="bar-chart-2"></span> Add Poll
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+
+                                {% if posts %}
+                                    <ul class="list-group mt-3">
+                                        {% for post in posts %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    {% if post.author %}
+                                                        <strong>{{ post.author }}:</strong>
+                                                    {% else %}
+                                                        <strong>Deleted User:</strong>
+                                                    {% endif %}
+                                                    
+                                                    {{ post.content }} <br>
+                                                    
+                                                    <small class="text-muted">
+                                                        Posted on {{ post.written_on }}
+                                                        {% if post.edited_on %}
+                                                        (Edited on {{ post.edited_on }})
+                                                        {% endif %}
+                                                    </small>
+                                                </div>
+
+                                                {% if user == post.author %}
+                                                    <a href="{% url 'main:edit_post' thread.forum.slug thread.slug post.id %}" class="btn btn-sm btn-warning">
+                                                        <span data-feather="edit"></span>
+                                                    </a>
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="card-text">No posts currently in this thread.</p>
+                                {% endif %}
+                            </div>                        
+
+                            <div>
+                                <h5>Add a Post</h5>
+                                
+                                <form method="post">
+                                    {% csrf_token %}
+                                
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    {% for field in form.visible_fields %}
+                                    <div class="mb-3">
+                                        {{ field.help_text }}<br />
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                    {% endfor %}
+                                    
+                                    <button class="btn btn-primary btn-sm" type="submit" name="submit">
+                                        <span data-feather="edit"></span> Post
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br>
+
+            <a href="{% url 'main:thread_list' forum.slug %}">
+                <span data-feather="arrow-left"></span> Back to {{ forum.name }}
+            </a>
+        </div>
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4 text-center">Search for related posts</h5>
+        
+                            <form class="form-inline justify-content-center mb-4" id="search-form" method="post" action="{% url 'main:thread_detail' thread.forum.slug thread.slug %}">
+                                {% csrf_token %}
+                                
+                                <div class="form-group mx-sm-3">
+                                    <input class="form-control" type="text" size="50" name="query" id="query" value="{{ query }}" placeholder="Search for articles..." />
+                                </div>
+                                
+                                <button class="btn btn-primary btn-sm" type="submit" name="search">
+                                    <span data-feather="search"></span> Search online
+                                </button>
+                            </form>
+        
+                            {% if result_list %}
+                                <h5>Results</h5>
+                                
+                                <div class="list-group">
+                                    {% for result in result_list %}
+                                        <div class="list-group-item mb-3">
+                                            <h6 class="list-group-item-heading">
+                                                <a href="{{ result.link }}"">{{ result.title|safe|escape }}</a>
+                                            </h6>
+                                            
+                                            <p class="list-group-item-text">{{ result.summary|safe|escape }}</p>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-center">No results found for your search.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Thread not found</h1>
+                
+                <div>
+                    <h3 class="jumborton-subject">
+                        Sorry, please search for the thread again.
+                    </h3>
+
+                    <p class="jumbotron-info">
+                        Make sure you have entered the URL correctly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

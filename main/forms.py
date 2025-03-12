@@ -9,12 +9,6 @@ class CategoryForm(forms.ModelForm):
 
     description = forms.CharField(widget=forms.Textarea(attrs={'rows': 5, 'cols': 80}), max_length=Category.DESCRIPTION_MAX_LENGTH, help_text="Please enter the category description:")
 
-    views = forms.IntegerField(widget=forms.HiddenInput(), initial=0)
-
-    points = forms.IntegerField(widget=forms.HiddenInput(), initial=0)
-
-    slug = forms.CharField(widget=forms.HiddenInput(), required=False)
-
     class Meta:
 
         model = Category
@@ -31,23 +25,13 @@ class ArticleForm(forms.ModelForm):
 
     article_picture = forms.ImageField(required=True, help_text="Please upload an image for the article:")
 
-    related_university = forms.ChoiceField(choices=[('', 'Select a university')] + UNIVERSITY_CHOICES, required=False, help_text="Enter if this article is related to a specific university:")
-
-    views = forms.IntegerField(widget=forms.HiddenInput(), initial=0)
-
-    points = forms.IntegerField(widget=forms.HiddenInput(), initial=0)
-
-    created_on = forms.DateTimeField(widget=forms.HiddenInput())
-
-    last_visit = forms.DateTimeField(widget=forms.HiddenInput(), required=False)
-
-    slug = forms.CharField(widget=forms.HiddenInput(), required=False)
+    related_university = forms.ChoiceField(choices=[('', 'Select a university (if applicable)')] + UNIVERSITY_CHOICES, required=False, help_text="Enter if this article is related to a specific university:")
 
     class Meta:
 
         model = Article
 
-        exclude = ('category', 'author',)
+        fields = ('title', 'summary', 'content', 'article_picture', 'related_university')
     
 class UserForm(forms.ModelForm):
 
@@ -65,13 +49,25 @@ class UserProfileForm(forms.ModelForm):
 
     last_name = forms.CharField(max_length=UserProfile.NAME_MAX_LENGTH, required=True)
 
-    start_year = forms.IntegerField(initial=timezone.now().year)
+    bio = forms.CharField(widget=forms.Textarea(attrs={'rows': 5}), max_length=UserProfile.BIO_MAX_LENGTH, required=True)
+
+    start_year = forms.IntegerField(initial=timezone.now().year, required=False)
+
+    profile_picture = forms.ImageField(required=True)
 
     class Meta:
 
         model = UserProfile
         
-        fields = ('first_name', 'last_name', 'university', 'school', 'department', 'degree', 'start_year', 'profile_picture',)
+        fields = ('first_name', 'last_name', 'bio', 'university', 'school', 'department', 'degree', 'start_year', 'profile_picture',)
+
+class ProfilePictureForm(forms.ModelForm):
+    
+    class Meta:
+    
+        model = UserProfile
+    
+        fields = ['profile_picture',]
 
 class CommentForm(forms.ModelForm):
 
@@ -81,7 +77,7 @@ class CommentForm(forms.ModelForm):
 
         model = Comment
 
-        exclude = ('article', 'user', 'written_on',)
+        fields = ['content']
 
 class ForumForm(forms.ModelForm):
 
@@ -101,15 +97,15 @@ class ThreadForm(forms.ModelForm):
 
     title = forms.CharField(max_length=Thread.TITLE_MAX_LENGTH, help_text="Enter the title of your thread:")
 
-    topic = forms.CharField(max_length=Thread.TOPIC_MAX_LENGTH, help_text="Enter the topic of your thread:")
+    topic = forms.CharField(widget=forms.Textarea(attrs={'rows': 5, 'cols': 80}), max_length=Thread.TOPIC_MAX_LENGTH, help_text="Enter the topic of your thread:")
     
-    related_university = forms.ChoiceField(choices=[('', 'Select a university')] + UNIVERSITY_CHOICES, required=False, help_text="Enter if this thread is related to a specific university:")
+    related_university = forms.ChoiceField(choices=[('', 'Select a university (if applicable)')] + UNIVERSITY_CHOICES, required=False, help_text="Enter if this thread is related to a specific university:")
 
     class Meta:
 
         model = Thread
         
-        fields = ['title', 'topic', 'related_university']
+        fields = ('title', 'topic', 'related_university')
 
 class PostForm(forms.ModelForm):
 

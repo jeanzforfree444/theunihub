@@ -9,7 +9,7 @@ class HubRegistrationView(RegistrationView):
     
     def get_success_url(self, user):
     
-        return reverse('rango:register_profile')
+        return reverse('main:register_profile')
 
 urlpatterns = [
     path('', views.IndexView.as_view(), name='index'),

@@ -1,0 +1,21 @@
+<ul class="nav flex-column">
+    {% if saved %}
+        {% for t in saved %}
+            {% if t == current_thread %}
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'main:thread_detail' t.forum.slug t.slug %}">
+                        <span data-feather="message-square"></span>{{ t.title }}
+                    </a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'main:thread_detail' t.forum.slug t.slug %}">
+                        <span data-feather="message-square"></span>{{ t.title }}
+                    </a>
+                </li>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <li class="nav-link">You don't have any saved threads yet.</li>
+    {% endif %}
+</ul>

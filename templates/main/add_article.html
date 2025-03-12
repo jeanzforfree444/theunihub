@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    {% if category %}
+        Add an Article to {{ category.name }}
+    {% else%}
+        Unknown Category
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if category %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Add an Article</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        This article will be added to the {{ category.name }} category.
+                    </h3>
+                
+                    <p class="jumbotron-info">Include a title, summary, content, and related picture to give users the best experience.</p>
+                </div>
+            </div>
+        </div>
+
+        {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-12">
+                        <div class="card-body">
+                            <div class="card-text">
+                                <form role="form" id="page_form" method="post" action="{% url 'main:add_article' category.slug %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+
+                                    {% if form.errors %}
+                                        <div class="alert alert-danger">
+                                            <strong>Error:</strong> Please correct the issues below.
+                                            
+                                            <ul>
+                                                {% for field in form %}
+                                                    {% for error in field.errors %}
+                                                        <li>{{ field.label }}: {{ error }}</li>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% endif %}
+
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    {% for field in form.visible_fields %}
+                                        {{ field.errors }}
+                                        {{ field.help_text }}<br />
+                                        {{ field }}<br />
+                                    {% endfor %}
+                                    <br />
+
+                                    <button class="btn btn-primary btn-sm" type="submit" name="submit">
+                                        <span data-feather="edit"></span> Publish Article
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br>
+
+            <a href="{% url 'main:show_category' category.slug %}">
+                <span data-feather="arrow-left"></span> Back to {{ category.name }}
+            </a>
+        </div>
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4 text-center">Search for related articles</h5>
+        
+                            <form class="form-inline justify-content-center mb-4" id="search-form" method="post" action="{% url 'main:add_article' category.slug %}">
+                                {% csrf_token %}
+                                
+                                <div class="form-group mx-sm-3">
+                                    <input class="form-control" type="text" size="50" name="query" id="query" value="{{ query }}" placeholder="Search for articles..." />
+                                </div>
+                                
+                                <button class="btn btn-primary btn-sm" type="submit" name="search">
+                                    <span data-feather="search"></span> Search online
+                                </button>
+                            </form>
+        
+                            {% if result_list %}
+                                <h5>Results</h5>
+                                
+                                <div class="list-group">
+                                    {% for result in result_list %}
+                                        <div class="list-group-item mb-3">
+                                            <h6 class="list-group-item-heading">
+                                                <a href="{{ result.link }}"">{{ result.title|safe|escape }}</a>
+                                            </h6>
+                                            <p class="list-group-item-text">{{ result.summary|safe|escape }}</p>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-center">No results found for your search.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Category not found</h1>
+                
+                <div>
+                    <h3 class="jumborton-subject">
+                        Sorry, please search for the category again.
+                    </h3>
+
+                    <p class="jumbotron-info">
+                        Make sure you have entered the URL correctly and that it is listed as a category in the siderbar.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

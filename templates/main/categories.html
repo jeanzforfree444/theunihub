@@ -1,0 +1,21 @@
+<ul class="nav flex-column">
+    {% if categories %}
+        {% for c in categories %}
+            {% if c == current_category %}
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'main:show_category' c.slug %}">
+                        <span data-feather="book"></span>{{ c.name }}
+                    </a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'main:show_category' c.slug %}">
+                        <span data-feather="book"></span>{{ c.name }}
+                    </a>
+                </li>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <li class="nav-link">There are no categories yet.</li>
+    {% endif %}
+</ul>

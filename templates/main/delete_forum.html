@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+
+{% block name_block %}
+    {% if forum %}
+        Delete Forum: {{ forum.name }}
+    {% else %}
+        Unknown Forum
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if forum %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Delete Forum</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        You are trying to delete the {{ forum.name }} forum.
+                    </h3>
+                
+                    <p class="jumbotron-info">
+                        Please make sure this is what you are trying to do because you will not be able to recover this forum.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5>Are you sure?</h5>
+                
+                            <p>We are sorry to see this forum go! You will have an opportunity to fill out a survey about your experience after.</p>
+
+                            <form method="post">
+                                {% csrf_token %}
+                
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <span data-feather="trash-2"></span> Yes, delete this forum
+                                </button>
+                
+                                <a href="{% url 'main:thread_list' forum.slug %}" class="btn btn-secondary btn-sm">
+                                    <span data-feather="x-circle"></span> Cancel
+                                </a>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Forum Not Found</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        Sorry, the forum you're trying to delete doesn't exist.
+                    </h3>
+                
+                    <p class="jumbotron-info">
+                        Make sure you have the correct URL and that you are a staff member.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

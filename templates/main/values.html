@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Our Values
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Our Values</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    These values are the foundations of <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+
+                <p class="jumbotron-info">
+                    This page has been put together by our management team.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Our Values</h5>
+            
+                        <p class="card-text">
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    <h6>Respect</h6>
+            
+                                    We believe that respect is the cornerstone of a strong academic and social community. Whether it is engaging with fellow students, academic staff, or university organisations, we promote an inclusive and supportive environment where all voices are valued. By fostering mutual respect, we ensure that discussions remain constructive, diverse perspectives are welcomed, and everyone feels comfortable sharing their thoughts and experiences.
+                                </li>
+            
+                                <li class="list-group-item">
+                                    <h6>Integrity</h6>
+            
+                                    Honesty and ethical behaviour are central to everything we do. At <span class="company-name"><i>TheUniHub</i></span>, we uphold the highest standards of academic and personal integrity, ensuring that the information we provide is accurate, reliable, and fair. Whether it is study advice, career guidance, or university insights, we are committed to transparency and accountability in all our interactions. We encourage students to uphold integrity in their academic work, fostering a culture of trust and responsibility.
+                                </li>
+            
+                                <li class="list-group-item">
+                                    <h6>Support</h6>
+            
+                                    University life can be challenging, and no student should have to navigate it alone. Our platform is built to provide support in every aspect of student life, from academic challenges to mental well-being, career preparation, and financial guidance. By creating a community where students can seek advice, share experiences, and offer encouragement to one another, we aim to ensure that every student feels supported throughout their university journey.
+                                </li>
+            
+                                <li class="list-group-item">
+                                    <h6>Quality</h6>
+            
+                                    Excellence is our benchmark. We strive to provide the highest quality content, resources, and guidance to help students succeed. From well-researched study tips to career development strategies and student lifestyle advice, we ensure that every piece of information shared on our platform is valuable, practical, and relevant. We continuously seek feedback and innovation to keep improving the services we offer.
+                                </li>
+            
+                                <li class="list-group-item">
+                                    <h6>Transparency</h6>
+            
+                                    We believe in openness and honesty in all our decisions, policies, and communications. Whether it is updates about our platform, partnerships with universities, or changes to our services, we keep our community informed. Transparency fosters trust, and we ensure that students always know how we operate, how we use their data, and how they can make the most of our platform.
+                                </li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Your Rights</h5>
+            
+                        <p class="card-text">At <span class="company-name"><i>TheUniHub</i></span>, we are committed to protecting your rights as a student and ensuring a fair, informative, and secure platform for all users. Below are the key rights you have as part of our community:</p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Right to Access</h6>
+            
+                        <p class="card-text">You have the right to access and benefit from the resources available on <span class="company-name"><i>TheUniHub</i></span>. Whether you are looking for academic advice, career opportunities, or student life insights, we ensure that our platform remains open and accessible to all university students.</p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Right to Privacy</h6>
+            
+                        <p class="card-text">Your privacy matters to us. We are committed to safeguarding your personal data and ensuring that it is used responsibly. You have the right to know how your data is collected, stored, and processed, and you can request to view or delete your information at any time.</p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Right to Expression</h6>
+            
+                        <p class="card-text">We believe in freedom of expression within a respectful and constructive framework. Students have the right to share their opinions, experiences, and insights on university life, provided they align with our community guidelines and do not promote harm, discrimination, or misinformation.</p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Right to Security</h6>
+            
+                        <p class="card-text">A safe and secure platform is our priority. You have the right to browse and interact on <span class="company-name"><i>TheUniHub</i></span> without fear of harassment, cyber threats, or data breaches. We have strict measures in place to protect users from fraud, spam, and harmful content.</p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Right to Support</h6>
+            
+                        <p class="card-text">University life can be overwhelming, and we are here to help. Whether you have a question about our platform, need guidance on student issues, or require assistance with technical difficulties, you have the right to seek support from our team and community.</p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Right to Control Your Content</h6>
+            
+                        <p class="card-text">You maintain ownership of the content you contribute to <span class="company-name"><i>TheUniHub</i></span>. Whether it’s a review, discussion post, or shared resource, you have the ability to edit or remove your content as needed. We respect your rights as a creator and will not use your content without your permission.</p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Right to Transparency</h6>
+            
+                        <p class="card-text">We are committed to keeping our policies, updates, and decisions clear and understandable. You have the right to be informed about how our platform operates and any changes that may affect your experience.</p>
+                    
+                        <p class="card-text">By using our platform, you agree to uphold these rights while also respecting the rights of others. If you have any questions or concerns, please find our <a href="{% url 'main:contact' %}">contact</a> information.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

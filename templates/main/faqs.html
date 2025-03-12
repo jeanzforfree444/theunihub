@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Frequently Asked Questions (FAQs)
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Frequently Asked Questions (FAQs)</h1>
+            <div>
+                <h3 class="jumborton-subject">
+                    Answers to common questions about <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+                
+                <p class="jumbotron-info">
+                    You should be able to find everything you need to make best use of the website.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>General Questions</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>What is TheUniHub?</h6>
+                    
+                        <p class="card-text">
+                            <span class="company-name"><i>TheUniHub</i></span> is an online platform designed to provide students, applying or alumni students, and university staff with information, resources, and a community for discussion on all aspects of university life.
+                        </p>
+                    
+                        <h6>Is TheUniHub affiliated with any universities?</h6>
+                    
+                        <p class="card-text">
+                            No, we are an independent platform that aims to provide unbiased information and a space for students and staff from different institutions to connect and share experiences. We may have links to university-specific websites but this does not show affiliation to any university; it is simply to enhance user experience.
+                        </p>
+                    
+                        <h6>What are the benefits of becoming a member?</h6>
+                    
+                        <p class="card-text">
+                            Non-members have access to a large portion of <span class="company-name"><i>TheUniHub</i></span> including viewing categories, articles, and forums, however they are not able to view threads, write articles and comments, start threads and write posts. They also are not able to like or dislike articles, like posts, favourite and save articles and threads. Additionally, they are not allowed access to the user list of the website meaning they cannot interact with other users. Since they have not registered, they cannot get a personalised feed on the home page for their university.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Registration and Accounts</h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <h6>How do I create an account?</h6>
+                    
+                        <p class="card-text">
+                            You can sign up by clicking the “Register” button at the top of the page and filling in your details, including your university email for verification.
+                        </p>
+                    
+                        <h6>Is there a cost to using TheUniHub?</h6>
+                    
+                        <p class="card-text">
+                            No, our platform is completely free to use.
+                        </p>
+                    
+                        <h6>I forgot my password. What should I do?</h6>
+                    
+                        <p class="card-text">
+                            Click on “Forgot Password?” on the login page and follow the instructions to reset your password.
+                        </p>
+                    
+                        <h6>Can I delete my account?</h6>
+                    
+                        <p class="card-text">
+                            Yes, you can delete your account from your profile settings. If you need assistance, <a href="{% url 'main:contact' %}">contact</a> our support team.
+                        </p>
+                    
+                        <h6>Can I edit my profile?</h6>
+                    
+                        <p class="card-text">
+                            Yes, click on the "Edit profile" button on your profile page and this will allow you to edit any of the profile details listed on your profile as well as allowing you to add a university and degree if you hadn't already. However, users are not allowed to edit their usernames.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+                
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Website Functionality</h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <h6>What are categories, and how do they work?</h6>
+                    
+                        <p class="card-text">
+                            Categories help group articles based on specific topics. Each article belongs to a category, making it easier to find content related to your interests.
+                        </p>
+                    
+                        <h6>Can I create or edit categories?</h6>
+                    
+                        <p class="card-text">
+                            No, only staff members can create or modify categories. If you have a suggestion for a new category, feel free to <a href="{% url 'main:contact' %}">contact</a> us.
+                        </p>
+                    
+                        <h6>How do articles work on this website?</h6>
+                    
+                        <p class="card-text">
+                            Articles provide informative content on various topics. They are written by our contributors and staff. Users can read, comment on, and share articles with others.
+                        </p>
+                    
+                        <h6>Can I write my own articles?</h6>
+                    
+                        <p class="card-text">
+                            Currently, only approved contributors and staff can write articles. However, if you're interested in contributing, you can <a href="{% url 'main:contact' %}">reach out</a> to us.
+                        </p>
+                    
+                        <h6>How do comments work on articles?</h6>
+                    
+                        <p class="card-text">
+                            You can comment on articles by typing your response in the comment section and clicking "<span data-feather="edit"></span> Comment." Comments must follow community guidelines and may be moderated.
+                        </p>
+                    
+                        <h6>Can I edit or delete my comments?</h6>
+                    
+                        <p class="card-text">
+                            Yes, you can edit or delete your comments within 24 hours of posting. After that, modification and deletion will require staff approval through a written request.
+                        </p>
+
+                        <h6>What are forums, and how do they work?</h6>
+                    
+                        <p class="card-text">
+                            Forums help organise threads based on specific topics. Each thread belongs to a forum, making it easier to find discussions related to your interests.
+                        </p>
+
+                        <h6>Can I create/edit forums?</h6>
+                    
+                        <p class="card-text">
+                            No, only users registered as staff are able to create forums. However, we are always looking to develop the website further and listen to users, so you can <a href="{% url 'main:contact' %}">contact</a> us if you have a suggestion or edit.
+                        </p>
+                    
+                        <h6>How do threads work on this website?</h6>
+                    
+                        <p class="card-text">
+                            Threads provide a discussion space across a wide range of topics. They are started by our contributors and staff. Users can read, post on, and share threads with others.
+                        </p>
+
+                        <h6>How do I start threads?</h6>
+                    
+                        <p class="card-text">
+                            Make your way to the forums section, choose a forum, and you will see a "Start thread" button. Clicking on this will load the thread form where you can start a thread.
+                        </p>
+                    
+                        <h6>Can I edit/delete my threads?</h6>
+                    
+                        <p class="card-text">
+                            Yes, you can edit your threads within 24 hours of starting. After that, you will need to write an deletion/edit request through our support team.
+                        </p>
+                    
+                        <h6>How do posts work on threads?</h6>
+                    
+                        <p class="card-text">
+                            You can post on threads by typing your response in the post section and clicking "<span data-feather="edit"></span> Post." Posts must follow community guidelines and may be moderated.
+                        </p>
+
+                        <h6>Can I edit/delete my posts?</h6>
+                    
+                        <p class="card-text">
+                            Yes, you can edit your posts within 24 hours of posting. After that, you will have to write to our support team about an edit or deletion request.
+                        </p>
+                    
+                        <h6>How do I report inappropriate content?</h6>
+                    
+                        <p class="card-text">
+                            Every post has a “Report” button. Click it to send a report to our moderation team, who will review it promptly.
+                        </p>
+
+                        <h6>How does the search functionality work?</h6>
+                    
+                        <p class="card-text">
+                            There are two search bars on the website:
+                        </p>
+                    
+                        <ul>
+                            <li><strong>Navigation bar search:</strong> This search bar is designed for finding articles and threads based on keywords.</li>
+                    
+                            <li><strong>Sidebar search:</strong> This search bar helps users find forum and category names.</li>
+                        </ul>
+                    
+                        <p class="card-text">
+                            Make sure to use the appropriate search bar depending on what you're looking for!
+                        </p>
+                    
+                        <h6>How do I favourite articles?</h6>
+                    
+                        <p class="card-text">
+                            You can favourite an article by clicking the "<span data-feather="plus-circle"></span> Favourite" button on the article page. Favourited articles will be saved to your profile and displayed in the "Favourites articles" section of the sidebar for easy access later.
+                        </p>
+
+                        <h6>How do I save threads?</h6>
+                    
+                        <p class="card-text">
+                            To save a thread for later, click the "<span data-feather="plus-circle"></span> Save" button on the thread page. Saved threads can be found in on the siderbar under the "Saved threads" section for quick access.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">                
+                    <div class="card-body">
+                        <h5>Support and Contact</h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <h6>How can I contact TheUniHub support?</h6>
+                    
+                        <p class="card-text">
+                            You can reach our support team through the <a href="{% url 'main:contact' %}">contact</a> page where you will find everything you need to be able to get further support.
+                        </p>
+                    
+                        <h6>Do you have a form feature?</h6>
+                    
+                        <p class="card-text">Yes, our form is available during business hours. Look for the form section at the bottom of the page.
+                            
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

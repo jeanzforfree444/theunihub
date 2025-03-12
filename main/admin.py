@@ -23,9 +23,15 @@ class ForumAdmin(admin.ModelAdmin):
 
     prepopulated_fields = {'slug': ('name',)}
 
+    ordering = ['name']
+
 class ThreadAdmin(admin.ModelAdmin):
 
     prepopulated_fields = {'slug': ('title',)}
+
+    list_display = ('title', 'forum', 'author')
+
+    ordering = ['title']
 
 class PostAdmin(admin.ModelAdmin):
 

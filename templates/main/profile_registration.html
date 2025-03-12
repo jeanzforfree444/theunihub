@@ -1,0 +1,119 @@
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Register
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Register Here</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    This page takes additional details to personalise your <span class="company-name"><i>TheUniHub</i></span> profile.
+                </h3>
+
+                <p class="jumbotron-info">
+                    If you are not currently student then we ask that you leave the university related fields blank.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <form method="post" action="{% url 'main:register_profile' %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+    
+                            {% if form.errors %}
+                                <div class="alert alert-danger">
+                                    <strong>Error:</strong> Please correct the issues below.
+            
+                                    <ul>
+                                        {% for field in form %}
+                                            {% for error in field.errors %}
+                                                <li>{{ field.label }}: {{ error }}</li>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+
+                            <p class="required">
+                                <label class="required" for="id_first_name">First Name:</label>
+            
+                                <input class="form-control" id="id_first_name" name="first_name" type="text" required />
+                            </p>
+    
+                            <p class="required">
+                                <label class="required" for="id_last_name">Last Name:</label>
+            
+                                <input class="form-control" id="id_last_name" name="last_name" type="text" required />
+                            </p>
+
+                            <p class="required">
+                                <label class="required" for="id_bio">Biography:</label>
+            
+                                <textarea class="form-control" id="id_bio" name="bio" rows="5" required></textarea>
+                            </p>                            
+    
+                            <p>
+                                <label for="id_university">University:</label>
+            
+                                <select class="form-control" id="id_university" name="university">
+                                    <option value="">Select your university (if applicable)</option>
+                                    {% for uni in form.university.field.choices %}
+                                        <option value="{{ uni.0 }}">{{ uni.1 }}</option>
+                                    {% endfor %}
+                                </select>
+            
+                                <span class="helptext">If you are not attending university, leave this blank.</span>
+                            </p>
+
+                            <div id="university-details" style="display: none;">
+                                <p>
+                                    <label for="id_school">School:</label>
+            
+                                    <input class="form-control" id="id_school" name="school" type="text" />
+                                </p>
+    
+                                <p>
+                                    <label for="id_department">Department:</label>
+            
+                                    <input class="form-control" id="id_department" name="department" type="text" />
+                                </p>
+    
+                                <p>
+                                    <label for="id_degree">Degree:</label>
+            
+                                    <input class="form-control" id="id_degree" name="degree" type="text" />
+                                </p>
+    
+                                <p>
+                                    <label for="id_start_year">Start Year:</label>
+            
+                                    <input class="form-control" id="id_start_year" name="start_year" type="number" min="1900" max="2099" step="1" />
+                                </p>
+                            </div>
+    
+                            <p>
+                                <label for="id_profile_picture">Profile Picture:</label>
+            
+                                <input class="form-control-file" id="id_profile_picture" name="profile_picture" type="file" />
+                            </p>
+    
+                            <button class="btn btn-primary btn-sm" type="submit" name="submit">
+                                <span data-feather="user-plus"></span> Create Profile
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -13,8 +13,8 @@ UNIVERSITY_CHOICES = [
     ('glasgow', 'University of Glasgow'),
     ('heriot_watt', 'Heriot-Watt University'),
     ('napier', 'Edinburgh Napier University'),
-    ('queen_margaret', 'Queen Margaret University'),
-    ('robert_gordon', 'Robert Gordon University'),
+    ('qmu', 'Queen Margaret University'),
+    ('rgu', 'Robert Gordon University'),
     ('st_andrews', 'University of St. Andrews'),
     ('stirling', 'University of Stirling'),
     ('strathclyde', 'University of Strathclyde'),
@@ -25,7 +25,7 @@ UNIVERSITY_CHOICES = [
     ('queens', "Queen's University of Belfast"),
     ('ulster', 'University of Ulster'),
     
-    # Wales Universities
+    # Welsh Universities
     ('aberystwyth', 'Aberystwyth University'),
     ('bangor', 'Bangor University'),
     ('cardiff', 'Cardiff University'),
@@ -102,21 +102,36 @@ class Article(models.Model):
 
     points = models.IntegerField(default=0)
 
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='articles', null=True, blank=True)
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='articles', null=True, blank=True)
 
     created_on = models.DateTimeField(default=timezone.now)
+
+    updated_on = models.DateTimeField(null=True, blank=True)
 
     related_university = models.CharField(max_length=250, choices=UNIVERSITY_CHOICES, blank=True, null=True)
 
     slug = models.SlugField(unique=True)
 
-    last_visit = models.DateTimeField(blank=True)
-
     def save(self, *args, **kwargs):
+        
+        if not self.slug:
+        
+            self.slug = slugify(self.title)
 
-        self.slug = slugify(self.title)
+        if self.pk:
+        
+            original = Article.objects.get(pk=self.pk)
 
-        self.last_visit = timezone.now()
+            if (self.views != original.views or self.points != original.points) and all(
+                getattr(self, field) == getattr(original, field)
+                for field in ['title', 'summary', 'content', 'article_picture', 'category', 'author']
+            ):
+                
+                super(Article, self).save(update_fields=['views', 'points'])
+                
+                return
+
+            self.updated_on = timezone.now()
 
         super(Article, self).save(*args, **kwargs)
 
@@ -136,11 +151,21 @@ class Comment(models.Model):
 
     article = models.ForeignKey(Article, on_delete=models.CASCADE)
 
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
     content = models.CharField(max_length=CONTENT_MAX_LENGTH)
 
     written_on = models.DateTimeField(default=timezone.now)
+
+    edited_on = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+
+        if self.pk:
+
+            self.edited_on = timezone.now()
+
+        super(Comment, self).save(*args, **kwargs)
 
     class Meta:
 
@@ -161,8 +186,6 @@ class Forum(models.Model):
     name = models.CharField(max_length=NAME_MAX_LENGTH, unique=True)
     
     description = models.CharField(max_length=DESCRIPTION_MAX_LENGTH)
-    
-    created_on = models.DateTimeField(default=timezone.now)
 
     slug = models.SlugField(unique=True)
 
@@ -194,11 +217,11 @@ class Thread(models.Model):
 
     topic = models.CharField(max_length=TOPIC_MAX_LENGTH)
     
-    author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     
-    created_on = models.DateTimeField(default=timezone.now)
+    started_on = models.DateTimeField(default=timezone.now)
     
-    updated_on = models.DateTimeField(blank=True)
+    updated_on = models.DateTimeField(null=True, blank=True)
 
     related_university = models.CharField(max_length=250, choices=UNIVERSITY_CHOICES, blank=True, null=True)
 
@@ -208,7 +231,9 @@ class Thread(models.Model):
 
         self.slug = slugify(self.title)
 
-        self.updated_on = timezone.now()
+        if self.pk:
+
+            self.updated_on = timezone.now()
 
         super(Thread, self).save(*args, **kwargs)
 
@@ -228,17 +253,27 @@ class Post(models.Model):
     
     thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
     
-    author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
     content = models.CharField(max_length=CONTENT_MAX_LENGTH)
     
-    created_on = models.DateTimeField(auto_now_add=True)
+    written_on = models.DateTimeField(default=timezone.now)
+
+    edited_on = models.DateTimeField(null=True, blank=True)
     
     likes = models.PositiveIntegerField(default=0)
+    
+    def save(self, *args, **kwargs):
+
+        if self.pk:
+
+            self.edited_on = timezone.now()
+
+        super(Post, self).save(*args, **kwargs)
 
     class Meta:
 
-        ordering = ['-created_on']
+        ordering = ['-written_on']
 
         verbose_name_plural = 'Posts'
 
@@ -284,7 +319,7 @@ class PollOption(models.Model):
 
     def __str__(self):
     
-        return f'{self.option_text} on {self.poll.question} with {self.votes}'
+        return f'{self.option_text} on {self.poll.question} with {self.votes} vote(s)'
 
 class UserProfile(models.Model):
 

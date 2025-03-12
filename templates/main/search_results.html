@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Search Results
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Search Results</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    Results for your search term: <span class="company-name"><i>{{ query }}</i></span>
+                </h3>
+
+                <p class="jumbotron-info">
+                    You can see all articles and threads containing this search term.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Articles</h5>
+            
+                        {% if articles %}
+                            <ul class="list-group">
+                                {% for article in articles %}
+                                    <li class="list-group-item mb-3">
+                                        <a href="{% url 'main:show_article' article.category.slug article.slug %}">{{ article.title }}</a><br>
+                                        {{ article.summary|safe }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>No articles found matching your search criteria.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Threads</h5>
+            
+                        {% if threads %}
+                            <ul class="list-group">
+                                {% for thread in threads %}
+                                    <li class="list-group-item mb-3">
+                                        <a href="{% url 'main:thread_detail' thread.forum.slug thread.slug %}">{{ thread.title }}</a><br>
+                                        {{ thread.topic|safe }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>No threads found matching your search criteria.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    {% if selected_user %}
+        Profile for {{ selected_user.username }}
+    {% else %}
+        Unknown User
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if selected_user %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                {% if selected_user == user %}
+                    <h1 class="jumbotron-heading">Your Profile</h1>
+                    
+                    <div>
+                        <h3 class="jumborton-subject">
+                            You can edit and view your <span class="company-name"><i>TheUniHub</i></span> profile here.
+                        </h3>
+
+                        <p class="jumbotron-info">
+                            {{ userprofile.bio }}
+                        </p>
+                        
+                        <p class="jumbotron-detail">
+                            {% if user.is_staff %}
+                                <p>You are a staff member.</p>
+                            {% else %}
+                                <p>You are not a staff member.</p>
+                            {% endif %}
+                        </p>
+                    </div>
+                {% else %}
+                    <h1 class="jumbotron-heading">{{ selected_user.username }}'s Profile</h1>
+                    
+                    <div>
+                        <h3 class="jumbotron-subject">
+                            You can view {{ selected_user.username }}'s <span class="company-name"><i>TheUniHub</i></span> profile here.
+                        </h3>
+
+                        <p class="jumbotron-info">
+                            {{ selected_user.userprofile.bio }}
+                        </p>
+
+                        <p class="jumbotron-detail">
+                            {% if selected_user.is_staff %}
+                                <p>They are a staff member.</p>
+                            {% else %}
+                                <p>They are not a staff member.</p>
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-12">
+                        <div class="card-body">
+                            <div class="card-text d-flex align-items-start">
+                                <div class="profile-picture-container mr-3">
+                                    {% if userprofile.profile_picture %}
+                                        <img class="profile-picture" src="{{ MEDIA_URL }}{{ userprofile.profile_picture }}" height="340" alt="{{ selected_user.username }}'s profile image" />
+                                    {% else %}
+                                        <img class="profile-picture" src="https://www.gravatar.com/avatar/?d=mp&s=340" width="340" height="340" alt="Default profile image" />
+                                    {% endif %}
+                                </div>
+
+                                <div class="profile-info">
+                                    <p class="mb-2"><strong>Username:</strong> {{ userprofile.user }}</p>
+                                    
+                                    <p class="mb-2"><strong>Name:</strong> {{ userprofile.first_name }} {{ userprofile.last_name }}</p>
+                                    
+                                    {% if user_has_university %}
+                                        <p class="mb-2"><strong>University:</strong> <a href="{{ university_website }}" target="_blank">{{ userprofile.get_university_display }}</a></p>
+                                    
+                                        <p class="mb-2"><strong>School:</strong> {{ userprofile.school }}</p>
+                                    
+                                        <p class="mb-2"><strong>Department:</strong> {{ userprofile.department }}</p>
+                                    
+                                        <p class="mb-2"><strong>Degree:</strong> {{ userprofile.degree }}</p>
+                                    
+                                        <p class="mb-0"><strong>Course started:</strong> {{ userprofile.start_year }}</p>
+                                    {% else %}
+                                        <p class="mb-0">Not currently enrolled in university.</p>
+                                    {% endif %}
+                                    
+                                    {% if selected_user == user %}
+                                    <div class="profile-link mt-3">
+                                        <div class="profile-link-item">
+                                            <a href="{% url 'auth_password_change' %}" class="btn btn-primary btn-sm">
+                                                <span data-feather="lock"></span> Change your password
+                                            </a>
+                                        </div>
+                                    
+                                        <div class="profile-link-item">
+                                            <a href="{% url 'main:edit_profile' %}" class="btn btn-primary btn-sm">
+                                                <span data-feather="user"></span> Edit your profile
+                                            </a>
+                                        </div>
+                                    
+                                        <div class="profile-link-item">
+                                            <a href="{% url 'auth_logout' %}?next=/main/" class="btn btn-primary btn-sm">
+                                                <span data-feather="log-out"></span> Logout
+                                            </a>
+                                        </div>
+                                    
+                                        <div class="profile-link-item">
+                                            <a href="{% url 'main:delete_account_confirmation' %}" class="btn btn-danger btn-sm">
+                                                <span data-feather="trash-2"></span> Delete your account
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>    
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if selected_user != user %}
+                <br>
+                
+                <a href="{% url 'main:list_users' %}">
+                    <span data-feather="arrow-left"></span> Back to Users
+                </a>
+            {% endif %}
+        </div><br />
+
+        <div class="container">
+            {% if selected_user == user %}
+                <h2 class="h2">Articles by you</h2><br />
+            {% else %}
+                <h2 class="h2">Articles by {{ userprofile.user }}</h2><br />
+            {% endif %}
+
+            {% if articles %}
+                <div class="swiper-container articles-swiper">
+                    <div class="swiper-wrapper">
+                        {% for article in articles %}
+                            <div class="swiper-slide">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">
+                                            <a href="{% url 'main:show_article' article.category.slug article.slug %}">{{ article.title|safe }}</a>
+                                        </h5>
+                                        
+                                        <p class="card-summary">{{ article.summary|safe }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="swiper-button-next articles-next"></div>
+                    
+                    <div class="swiper-button-prev articles-prev"></div>
+                </div>
+            {% else %}
+                <p class="card-text">This user hasn't written any articles yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="container">
+            {% if selected_user == user %}
+                <h2 class="h2">Threads by you</h2><br />
+            {% else %}
+                <h2 class="h2">Threads by {{ userprofile.user }}</h2><br />
+            {% endif %}
+
+            {% if threads %}
+                <div class="swiper-container threads-swiper">
+                    <div class="swiper-wrapper">
+                        {% for thread in threads %}
+                            <div class="swiper-slide">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">
+                                            <a href="{% url 'main:thread_detail' thread.forum.slug thread.slug %}">{{ thread.title|safe }}</a>
+                                        </h5>
+                                        
+                                        <p class="card-summary">{{ thread.topic|safe }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="swiper-button-next threads-next"></div>
+                    
+                    <div class="swiper-button-prev threads-prev"></div>
+                </div>
+            {% else %}
+                <p class="card-text">This user hasn't started any threads yet.</p>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">User Not Found</h1>
+                
+                <div>
+                    <h3 class="jumborton-subject">
+                        Sorry, please search for the user again.
+                    </h3>
+
+                    <p class="jumbotron-info">
+                        Make sure you have entered the URL correctly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

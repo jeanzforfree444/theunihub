@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Terms and Conditions
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Terms and Conditions</h1>
+
+            <div>
+                <h3 class="jumborton-subject">
+                    These are the terms and conditions for <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+            
+                <p class="jumbotron-info">
+                    This page has been put together by our legal team.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Terms and Conditions</h5>
+            
+                        <p class="card-text">
+                            These terms and conditions govern your use of <span class="company-name"><i>TheUniHub</i></span>. By accessing this website, you agree to comply with these terms. If you do not agree with any part of these terms, please refrain from using our website.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Use of the Website</h6>
+            
+                        <p class="card-text">
+                            By using <span class="company-name"><i>TheUniHub</i></span>, you agree to:
+                        </p>
+            
+                        <ul class="list-group">
+                            <li class="list-group-item">Use the website only for lawful purposes.</li>
+            
+                            <li class="list-group-item">Not post or share any harmful, abusive, or illegal content.</li>
+            
+                            <li class="list-group-item">Respect other users and engage in constructive discussions.</li>
+            
+                            <li class="list-group-item">Not attempt to gain unauthorised access to any part of the website.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Account Registration</h6>
+            
+                        <p class="card-text">
+                            Some features of <span class="company-name"><i>TheUniHub</i></span> may require you to create an account. By registering, you agree to:
+                        </p>
+            
+                        <ul class="list-group">
+                            <li class="list-group-item">Provide accurate and up-to-date information.</li>
+            
+                            <li class="list-group-item">Keep your account credentials secure and confidential.</li>
+            
+                            <li class="list-group-item">Be responsible for all activities under your account.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Intellectual Property</h6>
+            
+                        <p class="card-text">
+                            All content on <span class="company-name"><i>TheUniHub</i></span>, including text, graphics, logos, and software, is the property of <span class="company-name"><i>TheUniHub</i></span> and is protected by copyright laws. You may not reproduce, distribute, or modify any content without our permission.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Termination</h6>
+            
+                        <p class="card-text">
+                            We reserve the right to suspend or terminate your access to <span class="company-name"><i>TheUniHub</i></span> if you violate these terms. This includes, but is not limited to, fraudulent activity, harassment of other users, or misuse of the website.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Limitation of Liability</h6>
+            
+                        <p class="card-text">
+                            <span class="company-name"><i>TheUniHub</i></span> is not responsible for any direct, indirect, or consequential damages resulting from your use of the website. While we strive to provide accurate and reliable information, we do not guarantee that all content is error-free or up to date.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Third-Party Links</h6>
+            
+                        <p class="card-text">
+                            Our website may contain links to external websites. We are not responsible for the content, privacy policies, or practices of third-party sites. You should review the terms and privacy policies of any external site you visit.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Changes to These Terms</h6>
+            
+                        <p class="card-text">
+                            We may update these terms from time to time. It is your responsibility to check this page periodically to stay informed of any changes. Your continued use of <span class="company-name"><i>TheUniHub</i></span> after updates to these terms constitutes acceptance of the revised terms. If you have any questions about these terms or any subsequent change in terms then you can speak to us by checking our <a href="{% url 'main:contact' %}">contact</a> information.
+                        </p>
+                    </div>
+
+                    <div class="card-body">
+                        <h6>Governing Law</h6>
+            
+                        <p class="card-text">
+                            These terms and conditions are governed by and construed in accordance with the laws of the United Kingdom. Any disputes arising from these terms shall be subject to the exclusive jurisdiction of the UK courts.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

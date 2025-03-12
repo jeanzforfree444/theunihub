@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+
+{% block title_block %}
+    {% if thread %}
+        Edit Thread: {{ thread.title }}
+    {% else %}
+        Unknown Thread
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if thread %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Edit Thread</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        You are editing "{{ thread.title }}" in the {{ thread.forum.name }} forum.
+                    </h3>
+                
+                    <p class="jumbotron-info">
+                        Modify the title and topic as needed.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-12">
+                        <div class="card-body">
+                            <div class="card-text">
+                                <form role="form" id="edit_thread_form" method="post" action="{% url 'main:edit_thread' thread.forum.slug thread.slug %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+
+                                    {% if form.errors %}
+                                        <div class="alert alert-danger">
+                                            <strong>Error:</strong> Please correct the issues below.
+                
+                                            <ul>
+                                                {% for field in form %}
+                                                    {% for error in field.errors %}
+                                                        <li>{{ field.label }}: {{ error }}</li>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% endif %}
+
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    {% for field in form.visible_fields %}
+                                        {{ field.errors }}
+                                        {{ field.help_text }}<br />
+                                        {{ field }}<br />
+                                    {% endfor %}
+                                    <br />
+                
+                                    <button class="btn btn-primary btn-sm" type="submit" name="submit">
+                                        <span data-feather="edit"></span> Save Changes
+                                    </button>
+
+                                    <a href="{% url 'main:delete_thread' thread.forum.slug thread.slug %}" class="btn btn-danger btn-sm">
+                                        <span data-feather="trash-2"></span> Delete
+                                    </a>
+                                    
+                                    <a href="{% url 'main:thread_detail' thread.forum.slug thread.slug %}" class="btn btn-secondary btn-sm">
+                                        <span data-feather="x-circle"></span> Cancel
+                                    </a>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Thread Not Found</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        Sorry, the thread you're trying to edit doesn't exist.
+                    </h3>
+                
+                    <p class="jumbotron-info">
+                        Make sure you have the correct URL and that you are the author of this thread.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

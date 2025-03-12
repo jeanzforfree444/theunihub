@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    {% if article %}
+        {{ article.title }}
+    {% else %}
+        Unknown Article
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if article %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h1 class="jumbotron-heading">{{ article.title|safe }}</h1>
+                    
+                    <div class="d-flex">
+                        <form action="{% url 'main:favourite_article' article.slug %}" method="POST" class="me-2">
+                            {% csrf_token %}
+                            {% if article in request.user.userprofile.favourite_articles.all %}
+                                <button type="submit" id="favourite-btn" class="btn btn-danger btn-sm">
+                                    <span data-feather="minus-circle"></span> Unfavourite
+                                </button>
+                            {% else %}
+                                <button type="submit" id="favourite-btn" class="btn btn-primary btn-sm">
+                                    <span data-feather="plus-circle"></span> Favourite
+                                </button>
+                            {% endif %}
+                        </form>
+        
+                        {% if user.is_authenticated and user == article.author %}
+                            <a href="{% url 'main:edit_article' article.category.slug article.slug %}" class="ml-3 btn btn-warning btn-sm">
+                                <span data-feather="edit"></span> Edit Article
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>    
+
+                <div>
+                    <p class="jumbotron-detail">
+                        Written by 
+                        {% if article.author %}
+                            <a href="{% url 'main:profile' article.author.username %}">
+                                {% if article.author.userprofile.first_name and article.author.userprofile.last_name %}
+                                    {{ article.author.userprofile.first_name }} {{ article.author.userprofile.last_name }}
+                                {% else %}
+                                    {{ article.author.username }}
+                                {% endif %}
+                            </a>
+                        {% else %}
+                            Deleted User
+                        {% endif %}
+                        on {{ article.created_on }}
+                    </p>
+
+                    {% if article.updated_on %}
+                    <p class="jumbotron-detail">
+                        Updated on {{ article.updated_on }}
+                    </p>
+                    {% endif %}
+
+                    <p class="jumbotron-info">
+                        {{ article.summary|safe }}
+                    </p>
+
+                    <div>
+                        <strong id="view_count">{{ article.views }}</strong> views &vert; <strong id="point_count">{{ article.points }}</strong> points
+                        {% if user.is_authenticated %}
+                        <button id="like_btn" class="btn btn-primary btn-sm" data-articleid="{{ article.id }}" type="button">
+                            <span data-feather="thumbs-up"></span> Like
+                        </button>
+                        <button id="dislike_btn" class="btn btn-primary btn-sm" data-articleid="{{ article.id }}" type="button">
+                            <span data-feather="thumbs-up"></span> Dislike
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-12">
+                        <div class="card-body">
+                            <div class="card-text">
+                                <div class="container">
+                                    {% if article.article_picture %}
+                                        <img src="{{ MEDIA_URL }}{{ article.article_picture }}" class="img-fluid" alt="Article Picture"><br /><br />
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="container">
+                                    <div class="row">
+                                        <p style="word-wrap: break-word;">{{ article.content|safe }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <h5 class="mt-3">Comments</h5>
+            {% if comments %}
+                <ul class="list-group">
+                    {% for comment in comments %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if comment.author %}
+                                    <strong>{{ comment.author }}:</strong>
+                                {% else %}
+                                    <strong>Deleted User:</strong>
+                                {% endif %}
+                                {{ comment.content }} <br>
+                                <small class="text-muted">
+                                    Posted on {{ comment.written_on }}
+                                    {% if comment.edited_on %}
+                                    (Edited on {{ comment.edited_on }})
+                                    {% endif %}
+                                </small>
+                            </div>
+
+                            {% if user == comment.author %}
+                                <a href="{% url 'main:edit_comment' article.category.slug article.slug comment.id %}" class="btn btn-sm btn-warning">
+                                    <span data-feather="edit"></span>
+                                </a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No comments yet. Be the first to comment!</p>
+            {% endif %}
+        </div>    
+
+        {% if user.is_authenticated %}
+            <div class="container">
+                <h5 class="mt-3">Add a Comment</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    {% for hidden in form.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+                    {% for field in form.visible_fields %}
+                        {{ field.errors }}
+                        {{ field.help_text }}<br />
+                        {{ field }}<br /><br />
+                    {% endfor %}
+                    
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <span data-feather="edit"></span> Comment
+                    </button>
+                </form>
+            {% else %}
+                <div class="container">
+                    <p class="card-text mt-3">
+                        <a href="{% url 'auth_login' %}">Login</a> to add a comment.
+                    </p>
+                </div>
+            {% endif %}
+
+            <br>
+            
+            <a href="{% url 'main:show_category' article.category.slug %}">
+                <span data-feather="arrow-left"></span> Back to {{ article.category.name }}
+            </a><br />
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Article Not Found</h1>
+                
+                <div>
+                    <h3 class="jumborton-subject">
+                        Sorry, please search for the article again.
+                    </h3>
+
+                    <p class="jumbotron-info">
+                        Make sure you have entered the URL correctly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}    
+{% endblock %}

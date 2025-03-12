@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Home
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Home</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    {% if user.is_authenticated %}
+                        Hello, {{ user.username }}!
+                    {% else %}
+                        Hello! If you haven't already, please <a href="{% url 'registration_register' %}">register</a> or <a href="{% url 'auth_login' %}">login</a>.
+                    {% endif %}
+                </h3>
+
+                <p class="jumbotron-info">
+                    Welcome back to <span class="company-name"><i>TheUniHub</i></span>, here are your featured categories, articles, comments, and forums.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="messages mb-4">
+            {% for message in messages %}
+                <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h2>Most Visited Categories</h2>
+                        
+                        <p class="card-text">
+                            Explore the most popular categories where students and professionals actively discuss topics ranging from academics to career guidance. These categories are trending due their high view count and engagement.
+                        </p>
+                        
+                        <p class="card-text">
+                            {% if categories %}
+                                <ul class="list-group">
+                                    {% for category in categories %}
+                                        <li class="list-group-item">
+                                            <a href="{% url 'main:show_category' category.slug %}">{{ category.name }}</a> ({{ category.views }} views)
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="card-text">There are no categories yet.</p>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h2>Most Helpful Articles</h2>
+                        
+                        <p class="card-text">
+                            Browse the most helpful articles featuring top-rated, varied content written by students and academic contributors. These articles are highlighted for their usefulness, engagement, and point rating.
+                        </p>
+                        
+                        <p class="card-text">
+                            {% if articles %}
+                                <ul class="list-group">
+                                    {% for article in articles %}
+                                        <li class="list-group-item">
+                                            <a href="{% url 'main:show_article' article.category.slug article.slug %}">{{ article.title|safe }}</a>  ({{ article.points }} points)
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="card-text">There are no articles in any categories yet. You can start the first by finding a category and clicking the "<span data-feather="edit"></span> Add Article" button.</p>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h2>Latest Comments</h2>
+                        
+                        <p class="card-text">
+                            Stay up to date with the latest comments from students and contributors across various articles. These comments reflect recent activity and ongoing conversations, covering several categories like coding, jobs, events, and more.
+                        </p>
+                        
+                        <p class="card-text">
+                            Whether you're looking for answers, contributing your knowledge, or joining an engaging conversation, the comment section is a great place to interact with the community and stay informed.
+                        </p>
+                        
+                        <p class="card-text">
+                            {% if comments %}
+                                <ul class="list-group">
+                                    {% for comment in comments %}
+                                        <li class="list-group-item">
+                                            {% if comment.author %}
+                                                <strong>{{ comment.author }}:</strong>
+                                            {% else %}
+                                                <strong>Deleted User:</strong>
+                                            {% endif %}
+                                            
+                                            {{ comment.content }} - <a href="{% url 'main:show_article' comment.article.category.slug comment.article.slug %}">{{ comment.article.title|safe }}</a> <br>
+                                            
+                                            <small class="text-muted">
+                                                Posted on {{ comment.written_on }}
+                                                {% if comment.edited_on %}
+                                                    (Edited on {{ comment.edited_on }})
+                                                {% endif %}
+                                            </small>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="card-text">There are no comments on any articles yet. You can start the first by finding an article, typing your comment and clicking the "<span data-feather="edit"></span> Comment" button.</p>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h2>Trending Discussions</h2>
+                        
+                        <p class="card-text">
+                            Stay engaged with the latest trending discussions from various forums; some of these will be specific to a university but some will be general questions or advice threads. These discussions cover a wide range of topics like health, accommodation, campus news, and more.
+                        </p>
+                        
+                        <p class="card-text">
+                            Engage with these discussions to ask questions, share insights, or connect with peers who have similar interests. Whether you're looking for advice, resources, or simply a good debate, these forums are the perfect place to stay informed and involved.
+                        </p>
+                        
+                        <p class="card-text">
+                            {% if threads %}
+                                <ul class="list-group">
+                                    {% for thread in threads %}
+                                        <li class="list-group-item">
+                                            <strong>{{ thread.forum.name }}:</strong> <a href="{% url 'main:thread_detail' forum_name_slug=thread.forum.slug thread_title_slug=thread.slug %}">{{ thread.title }}</a> - {{thread.post_count}} posts
+                                            
+                                            <br>
+                                            
+                                            <small class="text-muted">
+                                                Started on {{ thread.started_on }}
+                                                {% if thread.updated_on %}
+                                                    (Updated on {{ thread.updated_on }})
+                                                {% endif %}
+                                            </small>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="card-text">There are no threads in any forums yet. You can start the first by finding a forum and clicking the "<span data-feather="edit"></span> Start Thread" button.</p>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if user_has_university %}
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-6">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h2>{{ user.userprofile.get_university_display }} Feed</h2>
+                                
+                                <div class="d-flex">
+                                    <a href="{{ university_website }}" target="_blank" class="btn btn-primary btn-sm">
+                                        <span data-feather="external-link"></span> Visit Official Website
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <p class="card-text">
+                                Since you've linked {{ user.userprofile.get_university_display }} to your profile, you now have access to a personalised feed. 
+                                This feed curates articles, discussions, and resources related to your university, keeping you up to 
+                                date with trending topics, academic insights, and student discussions.
+                            </p>
+                            
+                            <p class="card-text">
+                                Whether you're looking for the latest university-related articles, active discussion threads, or 
+                                quick access to your university's official website, this section is designed to enhance your student experience. 
+                            </p>
+                            
+                            <p class="card-text">
+                                {% if university_articles or university_threads %}
+                                    <ul class="list-group">
+                                        {% for article in university_articles %}
+                                            <li class="list-group-item">
+                                                <strong>{{ article.category.name }}:</strong>
+                            
+                                                <a href="{% url 'main:show_article' article.category.slug article.slug %}">
+                                                    {{ article.title }}
+                                                </a> ({{ article.views }} views &vert; {{ article.points }} points)
+                            
+                                                <br>
+                            
+                                                <small class="text-muted">
+                                                    Created on {{ article.created_on }}
+                                                    {% if article.updated_on %}
+                                                        (Updated on {{ article.updated_on }})
+                                                    {% endif %}
+                                                </small>
+                                            </li>
+                                        {% endfor %}
+                                
+                                        {% for thread in university_threads %}
+                                            <li class="list-group-item">
+                                                <strong>{{ thread.forum.name }}:</strong>
+                                
+                                                <a href="{% url 'main:thread_detail' forum_name_slug=thread.forum.slug thread_title_slug=thread.slug %}">
+                                                    {{ thread.title }}
+                                                </a> - {{ thread.post_count }} posts
+                                
+                                                <br>
+                                
+                                                <small class="text-muted">
+                                                    Started on {{ thread.started_on }}
+                                                    {% if thread.updated_on %}
+                                                        (Updated on {{ thread.updated_on }})
+                                                    {% endif %}
+                                                </small>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="card-text">There is no {{ user.userprofile.get_university_display }} related content yet.</p>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+ {% endblock %}

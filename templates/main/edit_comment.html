@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+
+{% block title_block %}
+    {% if comment %}
+        Edit Comment: {{ article.title }}
+    {% else %}
+        Unknown Article/Comment
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if comment %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Edit Comment</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        You are editing your comment in the {{ article.title }} article.
+                    </h3>
+                
+                    <p class="jumbotron-info">
+                        Modify the content as needed.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-12">
+                        <div class="card-body">
+                            <div class="card-text">
+                                {% if can_edit %}
+                                    <form role="form" id="edit_comment_form" method="post" action="{% url 'main:edit_comment' article.category.slug article.slug comment.id %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+
+                                        {% if form.errors %}
+                                            <div class="alert alert-danger">
+                                                <strong>Error:</strong> Please correct the issues below.
+                            
+                                                <ul>
+                                                    {% for field in form %}
+                                                        {% for error in field.errors %}
+                                                            <li>{{ field.label }}: {{ error }}</li>
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+
+                                        {% for hidden in form.hidden_fields %}
+                                            {{ hidden }}
+                                        {% endfor %}
+                                        {% for field in form.visible_fields %}
+                                            {{ field.errors }}
+                                            {{ field.help_text }}<br />
+                                            {{ field }}<br />
+                                        {% endfor %}
+                                        <br />
+                            
+                                        <button class="btn btn-primary btn-sm" type="submit" name="submit">
+                                            <span data-feather="edit"></span> Save Changes
+                                        </button>
+
+                                        <a href="{% url 'main:delete_comment' article.category.slug article.slug comment.id %}" class="btn btn-danger btn-sm">
+                                            <span data-feather="trash-2"></span> Delete
+                                        </a>
+
+                                        <a href="{% url 'main:show_article' article.category.slug article.slug %}" class="btn btn-secondary btn-sm">
+                                            <span data-feather="x-circle"></span> Cancel
+                                        </a>
+                                    </form>
+                                {% else %}
+                                    <h5>Time limit</h5>
+                            
+                                    <p>You're not within the time limit to edit this comment! Since this is the case, you will need to write to our support team about editing this comment. You can find this information on our <a href="{% url 'main:contact' %}">Contact</a> page.</p>
+                                    
+                                    <a href="{% url 'main:show_article' article.category.slug article.slug %}" class="btn btn-primary btn-sm">
+                                        <span data-feather="arrow-left-circle"></span> Back to {{ article.title }}
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Article/Comment Not Found</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        Sorry, the article or comment you're trying to edit doesn't exist.
+                    </h3>
+                
+                    <p class="jumbotron-info">
+                        Make sure you have the correct URL and that you are the author of this comment.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

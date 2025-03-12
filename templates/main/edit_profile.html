@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    Edit Profile
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Edit Your Profile</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    This page allows you to edit your <span class="company-name"><i>TheUniHub</i></span> profile.
+                </h3>
+
+                <p class="jumbotron-info">
+                    Edit the details for your account.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                        
+                            {% if form.errors %}
+                                <div class="alert alert-danger">
+                                    <strong>Error:</strong> Please correct the issues below.
+            
+                                    <ul>
+                                        {% for field in form %}
+                                            {% for error in field.errors %}
+                                                <li>{{ field.label }}: {{ error }}</li>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        
+                            <p class="required">
+                                <label class="required" for="id_first_name">First Name:</label>
+            
+                                <input class="form-control" id="id_first_name" name="first_name" type="text" value="{{ form.first_name.value|default:'' }}" required />
+                            </p>
+                        
+                            <p class="required">
+                                <label class="required" for="id_last_name">Last Name:</label>
+            
+                                <input class="form-control" id="id_last_name" name="last_name" type="text" value="{{ form.last_name.value|default:'' }}" required />
+                            </p>
+                        
+                            <p class="required">
+                                <label class="required" for="id_bio">Biography:</label>
+            
+                                <textarea class="form-control" id="id_bio" name="bio" rows="5" required>{{ form.bio.value|default:'' }}</textarea>
+                            </p>
+                        
+                            <p>
+                                <label for="id_university">University:</label>
+            
+                                <select class="form-control" id="id_university" name="university">
+                                    <option value="">Select your university (if applicable)</option>
+                                    {% for uni in form.university.field.choices %}
+                                        <option value="{{ uni.0 }}" {% if form.university.value == uni.0 %}selected{% endif %}>{{ uni.1 }}</option>
+                                    {% endfor %}
+                                </select>
+            
+                                <span class="helptext">If you are not attending university, leave this blank.</span>
+                            </p>
+                        
+                            <div id="university-details" style="display: none;">
+                                <p>
+                                    <label for="id_school">School:</label>
+            
+                                    <input class="form-control" id="id_school" name="school" type="text" value="{{ form.school.value|default:'' }}" />
+                                </p>
+                        
+                                <p>
+                                    <label for="id_department">Department:</label>
+            
+                                    <input class="form-control" id="id_department" name="department" type="text" value="{{ form.department.value|default:'' }}" />
+                                </p>
+                        
+                                <p>
+                                    <label for="id_degree">Degree:</label>
+            
+                                    <input class="form-control" id="id_degree" name="degree" type="text" value="{{ form.degree.value|default:'' }}" />
+                                </p>
+                        
+                                <p>
+                                    <label for="id_start_year">Start Year:</label>
+            
+                                    <input class="form-control" id="id_start_year" name="start_year" type="number" min="1900" max="2099" step="1" value="{{ form.start_year.value|default:'' }}" />
+                                </p>
+                            </div>
+                        
+                            <p>
+                                <label for="id_profile_picture">Profile Picture:</label>
+                                {% if form.instance.profile_picture %}
+                                    <br>
+                                    <img src="{{ form.instance.profile_picture.url }}" alt="Current Profile Picture" class="profile-picture" width="200">
+                                    <br>
+                                    Current picture
+                                    <br /><br />
+                                {% endif %}
+            
+                                <input class="form-control-file" id="id_profile_picture" name="profile_picture" type="file" />
+                            </p>                            
+                        
+                            <button class="btn btn-primary btn-sm" type="submit">
+                                <span data-feather="user"></span> Edit your profile
+                            </button>
+                        
+                            <a href="{% url 'main:profile' user.username %}" class="btn btn-secondary btn-sm">
+                                <span data-feather="x-circle"></span> Cancel
+                            </a>
+                        </form>                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    
+{% endblock %}

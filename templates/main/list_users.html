@@ -1,0 +1,47 @@
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    User Profiles
+{% endblock %}
+
+{% block body_block %}
+<div class="jumbotron p-4">
+    <div class="container">
+        <h1 class="jumbotron-heading">User Profiles</h1>
+        
+        <div>
+            <h3 class="jumborton-subject">
+                Here you can search and filter the profiles of all <span class="company-name"><i>TheUniHub</i></span> users.
+            </h3>
+        
+            <p class="jumbotron-info">
+                Your can edit and view your own profile <a href="{% url 'main:profile' user.username %}">here</a>.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-3">
+    <div class="row">
+        <div class="col-md-6">
+            <input type="text" id="profile-search-input" class="form-control" placeholder="Search by username...">
+        </div>
+        
+        <div class="col-md-6">
+            <select id="university-filter" class="form-control">
+                <option value="">Filter by University</option>
+                {% for university in universities %}
+                    <option value="{{ university.0 }}">{{ university.1 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-3">
+    <div class="row justify-content-center" id="profile-list">
+        {% include 'main/profiles.html' %}
+    </div>
+</div>
+{% endblock %}

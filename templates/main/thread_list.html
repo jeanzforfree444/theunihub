@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    {% if forum %}
+        Threads in {{ forum.name }}
+    {% else %}
+        Unknown Forum
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if forum %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h1 class="jumbotron-heading">{{ forum.name }}</h1>
+
+                    <div class="d-flex">
+                        {% if user.is_authenticated and user.is_staff %}
+                            <a href="{% url 'main:edit_forum' forum.slug %}" class="ml-3 btn btn-warning btn-sm">
+                                <span data-feather="edit"></span> Edit Forum
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="jumborton-subject">
+                        Search, view, and post on this forum.
+                    </h3>
+                    
+                    <p class="jumbotron-info">
+                        {{ forum.description|safe }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-12">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h4 class="card-title">Threads in {{ forum.name }}</h4>
+                
+                                <a href="{% url 'main:create_thread' forum.slug %}" class="btn btn-primary btn-sm">
+                                    <span data-feather="edit"></span> Start Thread
+                                </a>
+                            </div>
+        
+                            <div id="threads-listing">
+                                {% if threads %}
+                                    <ul class="list-group mt-3">
+                                        {% for thread in threads %}
+                                            <li class="list-group-item mb-3">
+                                                <p><a href="{% url 'main:thread_detail' forum.slug thread.slug %}">{{ thread.title|safe }}</a></p>
+                
+                                                Started by 
+                                                {% if thread.author %}
+                                                    <a href="{% url 'main:profile' thread.author.username %}">
+                                                        {% if thread.author.userprofile.first_name and thread.author.userprofile.last_name %}
+                                                            {{ thread.author.userprofile.first_name }} {{ thread.author.userprofile.last_name }}
+                                                        {% else %}
+                                                            {{ thread.author.username }}
+                                                        {% endif %}
+                                                    </a>
+                                                {% else %}
+                                                    Deleted User
+                                                {% endif %}
+                                                on {{ thread.started_on }}
+                                                {% if thread.updated_on %}
+                                                    (Updated on {{ thread.updated_on }})
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    No threads in this forum yet.<br /><br />
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <br>
+
+            <a href="{% url 'main:forum_list' %}">
+                <span data-feather="arrow-left"></span> Back to Forums
+            </a>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Forum not found</h1>
+                
+                <div>
+                    <h3 class="jumborton-subject">
+                        Sorry, please search for the forum again.
+                    </h3>
+
+                    <p class="jumbotron-info">
+                        Make sure you have entered the URL correctly and that it is listed as a Forum in the siderbar.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

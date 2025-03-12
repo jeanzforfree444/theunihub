@@ -1,0 +1,22 @@
+{% if profiles %}
+    {% for list_user in profiles %}
+        <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-4 d-flex justify-content-center">
+            <div class="card text-center p-3 shadow-sm" style="width: 10rem;">
+                <a href="{% url 'main:profile' list_user.user.username %}" class="mb-3">
+                    {% if list_user.profile_picture %}
+                        <img src="{{ MEDIA_URL }}{{ list_user.profile_picture }}" width="125" height="125" alt="Profile picture for {{ list_user.user.username }}" />
+                    {% else %}
+                        <img src="https://www.gravatar.com/avatar/?d=mp&s=340" width="125" height="125" alt="Placeholder image" />
+                    {% endif %}
+                </a>
+                <div class="card-body-m-0">
+                    <h6 class="card-title">
+                        <a href="{% url 'main:profile' list_user.user.username %}" class="text-decoration-none">{{ list_user.user.username }}</a>
+                    </h6>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <p class="card-text">There are no users on <span class="company-name"><i>TheUniHub</i></span> yet.</p>
+{% endif %}

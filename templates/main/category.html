@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load staticfiles %}
+
+{% block title_block %}
+    {% if category %}
+        Articles in {{ category.name }}
+    {% else %}
+        Unknown Category
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if category %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h1 class="jumbotron-heading">{{ category.name }}</h1>
+
+                    <div class="d-flex">
+                        {% if user.is_authenticated and user.is_staff %}
+                            <a href="{% url 'main:edit_category' category.slug %}" class="ml-3 btn btn-warning btn-sm">
+                                <span data-feather="edit"></span> Edit Category
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div>  
+                    <h3 class="jumborton-subject">
+                        Search, view, and post on this category.
+                    </h3>
+
+                    <p class="jumbotron-info">
+                        {{ category.description|safe }}
+                    </p>
+
+                    <div>
+                        <strong id="view_count">{{ category.views }}</strong> views &vert; <strong id="point_count">{{ category.points }}</strong> points
+                        
+                        {% if user.is_authenticated %}
+                        <button id="like_btn" class="btn btn-primary btn-sm" data-categoryid="{{ category.id }}" type="button">
+                            <span data-feather="thumbs-up"></span> Like
+                        </button>
+                        
+                        <button id="dislike_btn" class="btn btn-primary btn-sm" data-categoryid="{{ category.id }}" type="button">
+                            <span data-feather="thumbs-up"></span> Dislike
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-12">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h4 class="card-title">Articles in {{ category.name }}</h4>
+                                
+                                <a href="{% url 'main:add_article' category.slug %}" class="btn btn-primary btn-sm">
+                                    <span data-feather="edit"></span> Add Article
+                                </a>
+                            </div>
+        
+                            <div id="article-listing">
+                                {% if articles %}
+                                    <ul class="list-group mt-3">
+                                        {% for article in articles %}
+                                            <li class="list-group-item mb-3">
+                                                <p>
+                                                    <a href="{% url 'main:show_article' category.slug article.slug %}">{{ article.title|safe }}</a> ({{ article.views }} views &vert; {{ article.points }} points) 
+                                                </p>
+                                                Written by 
+                                                {% if article.author %}
+                                                    <a href="{% url 'main:profile' article.author.username %}">
+                                                        {% if article.author.userprofile.first_name and article.author.userprofile.last_name %}
+                                                            {{ article.author.userprofile.first_name }} {{ article.author.userprofile.last_name }}
+                                                        {% else %}
+                                                            {{ article.author.username }}
+                                                        {% endif %}
+                                                    </a>
+                                                {% else %}
+                                                    Deleted User
+                                                {% endif %}
+                                                on {{ article.created_on }}
+                                                {% if article.updated_on %}
+                                                (Updated on {{ article.updated_on }})
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    No articles in this category yet.<br /><br />
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <br>
+
+            <a href="{% url 'main:category_list' %}">
+                <span data-feather="arrow-left"></span> Back to Categories
+            </a>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Category not found</h1>
+                
+                <div>
+                    <h3 class="jumborton-subject">
+                        Sorry, please search for the category again.
+                    </h3>
+
+                    <p class="jumbotron-info">
+                        Make sure you have entered the URL correctly and that it is listed as a category in the siderbar.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

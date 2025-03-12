@@ -3,51 +3,138 @@ from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from main.models import Category, Article, UserProfile, Comment, Forum, Thread, Post, Poll, PollOption, UNIVERSITY_CHOICES
-from main.forms import CategoryForm, ArticleForm, UserProfileForm, CommentForm, ForumForm, ThreadForm, PostForm, PollForm, PollOptionForm
-from datetime import datetime
+from main.forms import CategoryForm, ArticleForm, UserProfileForm, ProfilePictureForm, CommentForm, ForumForm, ThreadForm, PostForm, PollForm, PollOptionForm
+from datetime import datetime, timedelta
 from main.bing_search import run_query
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib.auth.models import User
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 from django.contrib import messages
+from django.core.mail import send_mail
 from django.contrib.auth import logout
 from django.utils.safestring import mark_safe
 from django.forms import formset_factory
+from django.template.loader import render_to_string
+from django.conf import settings
 import json
 
 BANNED_WORDS = [
-    # Profanity & Swear Words
+    # Profanity and Offensive Language
     "fuck", "shit", "damn", "bitch", "ass", "asshole", "bastard", "prick", "wanker",
-    "bollocks", "dick", "cunt", "twat", "arse", "arsehole",
+    "bollocks", "dick", "cunt", "twat", "arse", "arsehole", "motherfucker", "slut", "whore",
+    "piss", "fag", "faggot", "cock", "pussy", "bastard", "douche", "cocksucker", "dickhead",
+    "shithead", "fuckhead", "fucktard", "nigger", "nigga", "chink", "spic", "kike", "gook",
 
-    # Sexually Explicit Terms
+    # Sexual Content and Explicit Terms
     "porn", "hentai", "blowjob", "anal", "dildo", "vibrator", "cum", "orgasm",
-    "pussy", "deepthroat", "threesome", "gangbang", "incest", "sex", "shag", "fucking"
+    "pussy", "deepthroat", "threesome", "gangbang", "incest", "sex", "shag", "fucking",
+    "sexually", "bukkake", "fisting", "rape", "fetish", "sexting", "cunnilingus", "masturbation",
+    "moaning", "orgy", "ejaculate", "cumshot", "penis", "vagina", "erection", "busty", "boobs", "tits", 
 
-    # Violent & Threatening Language
-    "kill yourself", "die", "murder you", "bomb", "terrorist", "execute",
-    "massacre", "suicide", "genocide", "kill you", "murder", "gun", "shoot", "blood"
+    # Violence, Threats, and Harmful Content
+    "kill yourself", "die", "murder you", "bomb", "terrorist", "execute", "massacre", 
+    "suicide", "genocide", "kill you", "murder", "gun", "shoot", "blood", "knife", "stab", 
+    "explode", "rape", "attack", "abuse", "torture", "slaughter", "slit my wrists", "overdose", 
+    "self harm", "hurt myself", "decapitate", "behead", "explode", "sniper", "violence", "war", "bloodshed",
 
-    # Hate Speech & Harassment
-    "retard", "cripple", "faggot", "dyke", "tranny", "spastic", "gimp",
-    "fag", "stupid", "idiot", "dumb",
+    # Ableism, Discriminatory Terms, and Insults
+    "retard", "cripple", "faggot", "dyke", "tranny", "spastic", "gimp", "moron", "idiot", "dumb", 
+    "stupid", "imbecile", "imbecilic", "simpleton", "mongo", "idiotic", "retarded", "lunatic", 
+    "psycho", "schizo", "bipolar", "autistic", "autism", "hysteric", "mentally ill", "psychiatric", 
 
-    # Drug & Substance-Related Terms
-    "weed", "cocaine", "heroin", "meth", "ecstasy", "lsd", "shrooms", 
-    "ketamine", "overdose",
+    # Drug-Related Terms and Substance Abuse
+    "weed", "cocaine", "heroin", "meth", "ecstasy", "lsd", "shrooms", "ketamine", "overdose", 
+    "marijuana", "opiate", "crack", "pill popper", "junkie", "high", "stoned", "blunt", "crackhead",
+    "addiction", "substance abuse", "snort", "dab", "trip", "needle", "suboxone", "poppers"
 
-    # Self-Harm & Suicide References
+    # Suicide and Self-Harm Related Content
     "cut myself", "end my life", "overdose", "slit my wrists", "i want to die", "kill myself", "kms",
+    "suicidal", "suicide pact", "suicide hotline", "self injury", "self-harm", "overdose", "end it all",
+    "i'm done", "feeling empty", "kill me", "ending my life",
 
-    # Scam & Spam Words
-    "free money", "click here", "earn cash", "work from home", "make millions",
-    "hot singles", "win a prize"
+    # Spam, Scams, and Fraudulent Content
+    "free money", "click here", "earn cash", "work from home", "make millions", "hot singles", 
+    "win a prize", "unsecured loan", "credit repair", "pyramid scheme", "get rich quick", 
+    "sign up now", "invest now", "bitcoin", "free gift card", "earn money fast", "no upfront fee",
+    "referral link", "clickbait", "giveaway", "job offer", "lottery winner", "prize",
+
+    # Hateful Speech and Discrimination
+    "racist", "xenophobe", "homophobe", "sexist", "misogynist", "bigot", "transphobic", "antisemitic", 
+    "homo", "fag", "colored", "minority", "gypsy", "redneck", "illegal immigrant", "slur", 
+    "nazi", "white supremacist", "KKK", "N-word", "cracker", "white trash", "wetback", "sand nigger", 
+    "cholo", "beaner", "terrorist", "bitch", "jew", "kike", "kuffar", "chink", "gook",
+
+    # Harmful or Inflammatory Phrases
+    "shut up", "fuck off", "piss off", "get lost", "drop dead", "go to hell", "suck my dick", "shut your mouth",
+    "eat shit", "go away", "off yourself", "you're useless", "no one cares", "nobody loves you", 
+    "you're pathetic", "you're a waste of space", "no one will miss you", "go kill yourself", 
+    "you'll never amount to anything", "end it already",
+
+    # Inappropriate or Offensive Jokes, Memes, and Humor
+    "yo mama", "your mom", "retarded joke", "cripple joke", "gay joke", "racist joke",
+    "homophobic joke", "sexist joke", "offensive humor", "insensitive humor",
+    "shock value", "inappropriate joke", "distasteful joke", "derogatory humor", "disrespectful",
+
+    # Offensive Terms and Slang (for any additional slurs, hate speech, or insults)
+    "bastard", "slut", "whore", "bimbo", "bastard", "asswipe", "shithead", "dickhead", "suck",
+    "douchebag", "cockface", "cumdumpster", "fistfucker", "slutbag", "faggotbag", "pussyass", 
+    "doucheass", "cockass", "assholeface", "twatwaffle", "assclown", "numbnuts", "dicktard", 
+    "assmunch", "shitstain", "cockknocker", "motherfucker",
+
+    # Malicious Content (cyberbullying, harmful advice, etc.)
+    "bitchslap", "kill himself", "kill herself", "kill themself", "slay yourself", "cut deep", "hang yourself",
+    "self destruct", "self loathe", "destroy yourself", "cyberbully", "send nudes", "fuck you", "die in a hole", 
+    "go die", "get lost", "no one cares", "your life is worthless", "empty shell", "kill me now",
+    "suck my balls", "eat my ass", "go suck a dick", "die already", "shut the hell up",
+
+    # Offensive Religious Terms (e.g., insults against religion, blasphemy, etc.)
+    "goddamn", "jesus christ", "holy shit", "christ on a cracker", "fucking hell", "god is dead", 
+    "blasphemy", "atheism", "hellfire", "burn in hell", "damnation", "satanist", "devil worshipper",
+    "god hate", "jesus freak", "holy fuck"
 ]
 
-def get_server_side_cookie(request, cookie, default_val=None):
+UNIVERSITY_WEBSITES = {
+    "aberdeen": "https://www.abdn.ac.uk/",
+    "abertay": "https://www.abertay.ac.uk/",
+    "caledonian": "https://www.gcu.ac.uk/",
+    "dundee": "https://www.dundee.ac.uk/",
+    "edinburgh": "https://www.ed.ac.uk/",
+    "glasgow": "https://www.gla.ac.uk/",
+    "heriot_watt": "https://www.hw.ac.uk/",
+    "napier": "https://www.napier.ac.uk/",
+    "queen_margaret": "https://www.qmu.ac.uk/",
+    "robert_gordon": "https://www.rgu.ac.uk/",
+    "st_andrews": "https://www.st-andrews.ac.uk/",
+    "stirling": "https://www.stir.ac.uk/",
+    "strathclyde": "https://www.strath.ac.uk/",
+    "uws": "https://www.uws.ac.uk/",
+    "uhi": "https://www.uhi.ac.uk/",
+    "queens": "https://www.qub.ac.uk/",
+    "ulster": "https://www.ulster.ac.uk/",
+    "aberystwyth": "https://www.aber.ac.uk/",
+    "bangor": "https://www.bangor.ac.uk/",
+    "cardiff": "https://www.cardiff.ac.uk/",
+    "cardiff_met": "https://www.cardiffmet.ac.uk/",
+    "usw": "https://www.southwales.ac.uk/",
+    "swansea": "https://www.swansea.ac.uk/",
+    "tsd": "https://www.uwtsd.ac.uk/",
+    "wrexham": "https://www.wrexham.ac.uk/",
+    "oxford": "https://www.ox.ac.uk/",
+    "cambridge": "https://www.cam.ac.uk/",
+    "imperial": "https://www.imperial.ac.uk/",
+    "ucl": "https://www.ucl.ac.uk/",
+    "kcl": "https://www.kcl.ac.uk/",
+    "lse": "https://www.lse.ac.uk/",
+    "harvard": "https://www.harvard.edu/",
+    "mit": "https://www.mit.edu/",
+    "stanford": "https://www.stanford.edu/",
+    "berkeley": "https://www.berkeley.edu/",
+}
 
+def get_server_side_cookie(request, cookie, default_val=None):
+    
     val = request.session.get(cookie)
     
     if not val:
@@ -60,15 +147,15 @@ def visitor_cookie_handler(request):
     
     visits = int(get_server_side_cookie(request, 'visits', '1'))
     
-    last_visit_cookie = get_server_side_cookie(request, 'last_visit', str(datetime.now()))
+    last_visit_cookie = get_server_side_cookie(request, 'last_visit', str(datetime.now())) 
     
-    last_visit_time = datetime.strptime(last_visit_cookie[:-7], '%Y-%m-%d %H:%M:%S')
-
+    last_visit_time = datetime.strptime(last_visit_cookie, '%Y-%m-%d %H:%M:%S.%f')  
+    
     if (datetime.now() - last_visit_time).days > 0:
-    
-        visits = visits + 1
-    
-        request.session['last_visit'] = str(datetime.now())
+        
+        visits += 1
+        
+        request.session['last_visit'] = str(datetime.now())  
     
     else:
     
@@ -90,25 +177,29 @@ class IndexView(View):
 
         context_dict['articles'] = article_list
         
-        comments = Comment.objects.order_by('-written_on')[:5]
+        comments = Comment.objects.order_by('-edited_on', '-written_on')[:5]
 
         context_dict['comments'] = comments
 
-        threads = Thread.objects.annotate(post_count=Count('post')).order_by('-updated_on')[:5]
+        threads = Thread.objects.annotate(post_count=Count('post')).order_by('-updated_on', '-started_on')[:5]
         
         context_dict['threads'] = threads
 
         university_articles = []
         
         university_threads = []
+
+        university_website = None
         
         if request.user.is_authenticated and request.user.userprofile.university:
         
             user_university = request.user.userprofile.university
         
-            university_articles = Article.objects.filter(related_university=user_university).order_by('-created_on')[:3]
+            university_articles = Article.objects.filter(related_university=user_university).order_by('-updated_on', '-created_on')[:3]
         
-            university_threads = Thread.objects.annotate(post_count=Count('post')).filter(related_university=user_university).order_by('-updated_on')[:3]
+            university_threads = Thread.objects.annotate(post_count=Count('post')).filter(related_university=user_university).order_by('-updated_on', '-started_on')[:3]
+
+            university_website = UNIVERSITY_WEBSITES.get(user_university)
 
         context_dict['university_articles'] = university_articles
         
@@ -116,69 +207,125 @@ class IndexView(View):
         
         context_dict['user_has_university'] = bool(request.user.is_authenticated and request.user.userprofile.university)
         
+        context_dict['university_website'] = university_website
+
         visitor_cookie_handler(request)
 
-        return render(request, 'rango/index.html', context=context_dict)
+        return render(request, 'main/index.html', context_dict)
 
 class AboutView(View):
 
     def get(self, request):
- 
+
         context_dict = {}
 
-        context_dict['founder_profile'] = UserProfile.objects.filter(user__username='aaronhxx_1').first()
+        team_members = [
+            ('aaronhxx_1', 'founder_profile'),
+            ('phoebe6504', 'developer_profile'),
+            ('euan_galloway', 'marketing_profile'),
+            ('urango123', 'system_profile'),
+        ]
 
-        context_dict['developer_profile'] = UserProfile.objects.filter(user__username='phoebe6504').first()
+        profiles = []
 
-        context_dict['marketing_profile'] = UserProfile.objects.filter(user__username='euan_galloway').first()
+        for username, key in team_members:
 
-        context_dict['system_profile'] = UserProfile.objects.filter(user__username='urangoo123').first()
+            profile = UserProfile.objects.filter(user__username=username).first()
+
+            if profile:
+
+                profiles.append(profile)
+
+        context_dict['team_members'] = profiles
 
         visitor_cookie_handler(request)
 
         context_dict['visits'] = request.session.get('visits', 0)
 
-        return render(request, 'rango/about.html', context_dict)
+        return render(request, 'main/about.html', context_dict)
 
 class PrivacyView(View):
 
     def get(self, request):
 
-        return render(request, 'rango/privacy.html')
+        return render(request, 'main/privacy.html')
     
 class TermsView(View):  
 
     def get(self, request):
 
-        return render(request, 'rango/terms.html')
+        return render(request, 'main/terms.html')
     
 class MissionVisionView(View):
     
     def get(self, request):
 
-        return render(request, 'rango/mission_vision.html')
+        return render(request, 'main/mission_vision.html')
 
 class ContactView(View):
 
     def get(self, request):
+        
+        return render(request, 'main/contact.html')
 
-        return render(request, 'rango/contact.html')
+    def post(self, request):
+
+        name = request.POST.get('name')
+
+        email = request.POST.get('email')
+
+        message = request.POST.get('message')
+
+        subject = f"New message from {name}"
+
+        message_body = f"Message from: {name}\nEmail: {email}\n\nMessage:\n{message}"
+
+        try:
+
+            send_mail(
+                subject,
+                message_body,
+                email,
+                [settings.CONTACT_EMAIL],
+                fail_silently=False
+            )
+
+            messages.success(request, "Your message has been sent successfully!")
+
+        except Exception as e:
+
+            messages.error(request, f"Something went wrong. Please try again later. Error: {e}", extra_tags="danger")
+
+        return render(request, 'main/contact.html', {
+            'name': name,
+            'email': email,
+            'message': message
+        })
 
 class ValuesView(View):
 
     def get(self, request):
 
-        return render(request, 'rango/values.html')
+        return render(request, 'main/values.html')
+
+class FAQsView(View):
+
+    def get(self, request):
+
+        return render(request, 'main/faqs.html')
 
 class StatsView(View):
 
     @method_decorator(login_required)
-    @method_decorator(user_passes_test(lambda u: u.is_staff))
     def get(self, request):
         
         context_dict = {}
         
-        context_dict['total_cats'] = Category.objects.count()
+        if not request.user.is_staff:
+
+            return redirect(reverse('main:index'))
+        
+        context_dict['total_categories'] = Category.objects.count()
         
         context_dict['total_articles'] = Article.objects.count()
         
@@ -196,9 +343,13 @@ class StatsView(View):
         
         total_views = sum(article.views for article in Article.objects.all())
 
+        total_likes = sum(post.likes for post in Post.objects.all())
+
         context_dict['total_points'] = total_points
         
         context_dict['total_views'] = total_views
+
+        context_dict['total_likes'] = total_likes
 
         category_stats = {}
         
@@ -213,7 +364,7 @@ class StatsView(View):
             category_views_sum = sum(article.views for article in category.article_set.all())
 
             category_stats[category.name] = {
-                'number': articles_sum,
+                'articles': articles_sum,
                 'points': category_points_sum,
                 'views': category_views_sum
             }
@@ -232,7 +383,28 @@ class StatsView(View):
 
         context_dict['category_names'] = mark_safe(json.dumps(category_names))
 
-        return render(request, 'rango/stats.html', context_dict)
+        forum_stats = {}
+
+        forum_names = []
+
+        for forum in Forum.objects.all():
+
+            threads_sum = forum.thread_set.count()
+
+            posts_sum = sum(thread.post_set.count() for thread in forum.thread_set.all())
+
+            forum_stats[forum.name] = {
+                'threads': threads_sum,
+                'posts': posts_sum
+            }
+
+            forum_names.append(forum.name)
+        
+        context_dict['forum_stats'] = forum_stats
+        
+        context_dict['forum_names'] = forum_names
+
+        return render(request, 'main/stats.html', context_dict)
 
 class RegisterProfileView(View):
 
@@ -243,7 +415,7 @@ class RegisterProfileView(View):
 
         context_dict = {'form': form}
 
-        return render(request, 'rango/profile_registration.html', context_dict)
+        return render(request, 'main/profile_registration.html', context_dict)
     
     @method_decorator(login_required)
     def post(self, request):
@@ -252,13 +424,13 @@ class RegisterProfileView(View):
 
         if form.is_valid():
 
-            user_profile = form.save(commit=False)
+            userprofile = form.save(commit=False)
 
-            user_profile.user = request.user
+            userprofile.user = request.user
 
-            user_profile.save()
+            userprofile.save()
 
-            return redirect(reverse('rango:index'))
+            return redirect(reverse('main:index'))
         
         else:
         
@@ -266,80 +438,139 @@ class RegisterProfileView(View):
         
         context_dict = {'form': form}
         
-        return render(request, 'rango/profile_registration.html', context_dict)
+        return render(request, 'main/profile_registration.html', context_dict)
 
 class ProfileView(View):
     
     def get_user_details(self, username):
+
+        context_dict = {}
     
         try:
     
             user = User.objects.get(username=username)
+
+            context_dict['selected_user'] = user
     
         except User.DoesNotExist:
-    
-            return None
+
+            context_dict['selected_user'] = None
+
+            return context_dict
         
-        user_profile = UserProfile.objects.get_or_create(user=user)[0]
+        userprofile = UserProfile.objects.get_or_create(user=user)[0]
+
+        context_dict['userprofile'] = userprofile
 
         articles = Article.objects.filter(author=user).select_related("category").order_by('created_on')
 
-        threads = Thread.objects.filter(author=user).select_related("forum").order_by('created_on')
+        context_dict['articles'] = articles
+
+        threads = Thread.objects.filter(author=user).select_related("forum").order_by('started_on')
+
+        context_dict['threads'] = threads
+
+        university_website = None
 
         if user.is_authenticated and user.userprofile.university:
         
             user_university = user.userprofile.university
+            
+            university_website = UNIVERSITY_WEBSITES.get(user_university)
         
         user_has_university = bool(user.is_authenticated and user.userprofile.university)
+
+        context_dict['user_has_university'] = user_has_university
+
+        context_dict['university_website'] = university_website
         
-        return (user, user_profile, articles, threads, user_has_university)
+        return context_dict
     
     @method_decorator(login_required)
     def get(self, request, username):
-
-        try:
         
-            (user, user_profile, articles, threads, user_has_university) = self.get_user_details(username)
-        
-        except TypeError:
-        
-            return redirect(reverse('rango:index'))
-        
-        context_dict = {'user_profile': user_profile, 'selected_user': user, 'articles': articles, 'threads': threads, 'user_has_university': user_has_university}
-        
-        return render(request, 'rango/profile.html', context_dict)
+        context_dict = self.get_user_details(username)
+                
+        return render(request, 'main/profile.html', context_dict)
     
     @method_decorator(login_required)
     def post(self, request, username):
 
-        try:
+        context_dict = self.get_user_details(username)
+                
+        return render(request, 'main/profile.html', context_dict)
 
-            (user, user_profile, articles, threads, user_has_university) = self.get_user_details(username)
+class EditProfileView(View):
 
-        except TypeError:
+    def get_user_profile(self, user):
 
-            return redirect(reverse('rango:index'))
-        
-        context_dict = {'user_profile': user_profile, 'selected_user': user, 'articles': articles, 'threads': threads, 'user_has_university': user_has_university}
-        
-        return render(request, 'rango/profile.html', context_dict)
+        user_profile, created = UserProfile.objects.get_or_create(user=user)
 
-class ListProfilesView(View):
+        return user_profile
+
+    @method_decorator(login_required)
+    def get(self, request):
+
+        user_profile = self.get_user_profile(request.user)
+
+        form = UserProfileForm(instance=user_profile)
+
+        return render(request, 'main/edit_profile.html', {'form': form})
+
+    @method_decorator(login_required)
+    def post(self, request):
+
+        user_profile = self.get_user_profile(request.user)
+
+        form = UserProfileForm(request.POST, request.FILES, instance=user_profile)
+
+        if form.is_valid():
+
+            form.save()
+
+            return redirect(reverse('main:profile', kwargs={'username': request.user.username}))  
+
+        return render(request, 'main/edit_profile.html', {'form': form})
+
+class ListUsersView(View):
 
     @method_decorator(login_required)
     def get(self, request):
 
         profiles = UserProfile.objects.all()
 
-        return render(request, 'rango/list_profiles.html', {'users_list': profiles})
+        university_keys = UserProfile.objects.exclude(university__isnull=True).exclude(university="").values_list('university', flat=True).distinct()
+
+        university_dict = dict(UNIVERSITY_CHOICES)
+
+        universities = [(key, university_dict.get(key, key)) for key in university_keys]
+
+        search_query = request.GET.get('search', '').strip().lower()
+        
+        university_filter = request.GET.get('university', '').strip()
+
+        if search_query:
+        
+            profiles = profiles.filter(user__username__icontains=search_query)
+
+        if university_filter:
+        
+            profiles = profiles.filter(university=university_filter)
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+
+            profiles_html = render_to_string('main/profiles.html', {'profiles': profiles, 'MEDIA_URL': settings.MEDIA_URL})
+            
+            return JsonResponse({'profiles_html': profiles_html})
+
+        return render(request, 'main/list_users.html', {'profiles': profiles, 'universities': universities})
 
 class DeleteAccountConfirmationView(View):
 
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
   
-        return render(request, 'rango/confirm_delete_account.html')
-
+        return render(request, 'main/confirm_delete_account.html')
 
 class DeleteAccountView(View):
 
@@ -354,7 +585,7 @@ class DeleteAccountView(View):
   
         messages.success(request, "Your account has been successfully deleted.")
   
-        return redirect('rango:index')
+        return redirect('main:index')
 
 class CategoryListView(View):
 
@@ -366,7 +597,7 @@ class CategoryListView(View):
         
         context_dict['categories'] = categories
 
-        return render(request, 'rango/category_list.html', context_dict)
+        return render(request, 'main/category_list.html', context_dict)
 
 class ShowCategoryView(View):
 
@@ -393,29 +624,14 @@ class ShowCategoryView(View):
             context_dict['articles'] = None
 
             context_dict['category'] = None
-        
+
         return context_dict
-    
+
     def get(self, request, category_name_slug):
 
         context_dict = self.create_context_dict(category_name_slug)
 
-        return render(request, 'rango/category.html', context_dict)
-    
-    @method_decorator(login_required)
-    def post(self, request, category_name_slug):
-
-        context_dict = self.create_context_dict(category_name_slug)
-
-        query = request.POST['query'].strip()
-
-        if query:
-
-            context_dict['result_list'] = run_query(query)
-
-            context_dict['query'] = query
-        
-        return render(request, 'rango/category.html', context_dict)
+        return render(request, 'main/category.html', context_dict)
 
 class AddCategoryView(View):
 
@@ -424,18 +640,18 @@ class AddCategoryView(View):
         
         if not request.user.is_staff:
 
-            return redirect(reverse('rango:index'))
+            return redirect(reverse('main:index'))
 
         form = CategoryForm()
 
-        return render(request, 'rango/add_category.html', {'form': form})
+        return render(request, 'main/add_category.html', {'form': form})
     
     @method_decorator(login_required)
     def post(self, request):
         
         if not request.user.is_staff:
 
-            return redirect(reverse('rango:index'))
+            return redirect(reverse('main:index'))
 
         form = CategoryForm(request.POST)
 
@@ -443,13 +659,107 @@ class AddCategoryView(View):
 
             form.save(commit=True)
 
-            return redirect(reverse('rango:index'))
+            return redirect(reverse('main:index'))
         
         else:
 
             print(form.errors)
         
-        return render(request, 'rango/add_category.html', {'form': form})
+        return render(request, 'main/add_category.html', {'form': form})
+
+@method_decorator(login_required, name='dispatch')
+class EditCategoryView(View):
+
+    def get_category(self, category_name_slug):
+
+        try:
+
+            return Category.objects.get(slug=category_name_slug)
+        
+        except Category.DoesNotExist:
+
+            return None
+
+    def create_context_dict(self, category):
+        
+        return {'category': category, 'form': CategoryForm(instance=category)}
+
+    def get(self, request, category_name_slug):
+        
+        if not request.user.is_staff:
+
+            return redirect('main:show_category', category_name_slug=category_name_slug)
+
+        category = self.get_category(category_name_slug)
+
+        context_dict = self.create_context_dict(category)
+        
+        return render(request, 'main/edit_category.html', context_dict)
+
+    def post(self, request, category_name_slug):
+
+        if not request.user.is_staff:
+
+            return redirect('main:show_category', category_name_slug=category_name_slug)
+
+        category = self.get_category(category_name_slug)
+
+        form = CategoryForm(request.POST, instance=category)
+
+        if form.is_valid():
+
+            updated_category = form.save()
+            
+            return redirect('main:show_category', category_name_slug=updated_category.slug)
+
+        context_dict = self.create_context_dict(category)
+        
+        context_dict['form'] = form  
+        
+        return render(request, 'main/edit_category.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class DeleteCategoryView(View):
+
+    def get_category(self, category_name_slug):
+        
+        try:
+        
+            return Category.objects.get(slug=category_name_slug)
+        
+        except Category.DoesNotExist:
+        
+            return None
+
+    def get(self, request, category_name_slug):
+
+        if not request.user.is_staff:
+
+            return redirect('main:show_category', category_name_slug=category_name_slug)
+        
+        category = self.get_category(category_name_slug)
+
+        if category is None:
+        
+            return render(request, 'main/delete_category.html', {'category': None})
+
+        return render(request, 'main/delete_category.html', {'category': category})
+
+    def post(self, request, category_name_slug):
+
+        if not request.user.is_staff:
+
+            return redirect('main:show_category', category_name_slug=category_name_slug)
+        
+        category = self.get_category(category_name_slug)
+
+        if category is None:
+        
+            return render(request, 'main/delete_category.html', {'category': None})
+        
+        category.delete()
+
+        return redirect('main:category_list')
 
 class LikeCategoryView(View):
 
@@ -501,46 +811,6 @@ class DislikeCategoryView(View):
 
         return HttpResponse(category.points)
 
-def get_category_list(max_results=0, starts_with=''):
-
-    category_list = []
-
-    if starts_with:
-
-        category_list = Category.objects.filter(name__istartswith=starts_with).order_by('-views')
-
-    else:
-        
-        category_list = Category.objects.order_by('name')
-    
-    if max_results > 0:
-
-        if len(category_list) > max_results:
-
-            category_list = category_list[:max_results]
-    
-    return category_list
-
-class CategorySuggestionView(View):
-
-    def get(self, request):
-
-        if 'suggestion' in request.GET:
-
-            suggestion = request.GET['suggestion']
-        
-        else:
-
-            suggestion = ''
-
-        category_list = get_category_list(max_results=5, starts_with=suggestion)
-
-        if len(category_list) == 0:
-
-            category_list = Category.objects.order_by('name')
-        
-        return render(request, 'rango/categories.html', {'categories': category_list})
-
 class ShowArticleView(View):
 
     def create_context_dict(self, category_name_slug, article_title_slug):
@@ -587,7 +857,7 @@ class ShowArticleView(View):
         
         context_dict['form'] = CommentForm()
         
-        return render(request, 'rango/article.html', context_dict)
+        return render(request, 'main/article.html', context_dict)
 
     @method_decorator(login_required)
     def post(self, request, category_name_slug, article_title_slug):
@@ -606,7 +876,7 @@ class ShowArticleView(View):
                 
                 storage.used = True
 
-                messages.error(request, "Your comment contains innappropriate content and was not posted.")
+                messages.error(request, "Your comment contains innappropriate content and was not submitted.", extra_tags="danger")
         
             else:
 
@@ -614,17 +884,25 @@ class ShowArticleView(View):
             
                 comment.article = context_dict['article']
             
-                comment.user = request.user
+                comment.author = request.user
             
                 comment.save()
 
-                messages.success(request, "Your comment has been posted successfully.")
+                article = context_dict.get('article')
+
+                if article:
+
+                    article.updated_on = timezone.now()
+
+                    article.save()
+
+                messages.success(request, "Your comment has been submitted successfully.")
         
-            return redirect('rango:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
         
         context_dict['form'] = form
         
-        return render(request, 'rango/article.html', context_dict)
+        return render(request, 'main/article.html', context_dict)
 
 class AddArticleView(View):
 
@@ -637,56 +915,418 @@ class AddArticleView(View):
         except Category.DoesNotExist:
 
             category = None
-        
+
         return category
     
     @method_decorator(login_required)
     def get(self, request, category_name_slug):
 
         form = ArticleForm()
-
+        
         category = self.get_category_name(category_name_slug)
-
-        if category is None:
-
-            return redirect(reverse('rango:index'))
         
         context_dict = {'form': form, 'category': category}
 
-        return render(request, 'rango/add_article.html', context_dict)
+        query = request.GET.get('query', '').strip()
+        
+        if query:
+        
+            context_dict['query'] = query
+        
+            context_dict['result_list'] = run_query(query)
+
+        return render(request, 'main/add_article.html', context_dict)
     
     @method_decorator(login_required)
     def post(self, request, category_name_slug):
-
+        
         form = ArticleForm(request.POST, request.FILES)
-
+        
         category = self.get_category_name(category_name_slug)
 
-        if category is None:
-
-            return redirect(reverse('rango:index'))
-        
         if form.is_valid():
 
-            article = form.save(commit=False)
+            title = form.cleaned_data['title']
 
-            article.category = category
+            summary = form.cleaned_data['summary']
 
-            article.views = 0
+            content = form.cleaned_data['content']
 
-            article.points = 0
+            if any(word in title.lower() for word in BANNED_WORDS):
 
-            article.save()
+                storage = messages.get_messages(request)
 
-            return redirect(reverse('rango:show_category', kwargs={'category_name_slug': category_name_slug}))
+                storage.used = True
+
+                messages.error(request, "The title of your article contains innappropriate content and was not submitted.", extra_tags="danger")
+
+            elif any(word in summary.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+
+                storage.used = True
+
+                messages.error(request, "The summary of your article contains innappropriate content and was not submitted.", extra_tags="danger")
+
+            elif any(word in content.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+                
+                storage.used = True
+
+                messages.error(request, "The content of your article contains innappropriate content and was not submitted.", extra_tags="danger")
         
-        else:
+            else:
+        
+                article = form.save(commit=False)
+            
+                article.author = request.user
+            
+                article.category = category
+            
+                article.views = 0
+            
+                article.points = 0
+            
+                article.save()
 
-            print(form.errors)
+                messages.success(request, "Your article has been submitted successfully.")
+        
+                return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article.slug)
         
         context_dict = {'form': form, 'category': category}
 
-        return render(request, 'rango/add_article.html', context=context_dict)
+        query = request.POST.get('query', '').strip()
+        
+        if query:
+        
+            context_dict['query'] = query
+        
+            context_dict['result_list'] = run_query(query)
+
+        return render(request, 'main/add_article.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class EditArticleView(View):
+
+    def get_category(self, category_name_slug):
+
+        try:
+
+            return Category.objects.get(slug=category_name_slug)
+        
+        except Category.DoesNotExist:
+
+            return None
+
+    def get_article(self, article_title_slug):
+        
+        try:
+        
+            return Article.objects.get(slug=article_title_slug)
+        
+        except Article.DoesNotExist:
+        
+            return None
+
+    def create_context_dict(self, article):
+        
+        return {'article': article, 'form': ArticleForm(instance=article)}
+
+    def get(self, request, category_name_slug, article_title_slug):
+
+        category = self.get_category(category_name_slug)
+
+        article = self.get_article(article_title_slug)
+
+        if article is None:
+            
+            return render(request, 'main/edit_article.html', {'article': None})
+
+        if request.user != article.author:
+
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        context_dict = self.create_context_dict(article)
+        
+        return render(request, 'main/edit_article.html', context_dict)
+
+    def post(self, request, category_name_slug, article_title_slug):
+
+        category = self.get_category(category_name_slug)
+
+        article = self.get_article(article_title_slug)
+
+        if article is None:
+            
+            return render(request, 'main/edit_article.html', {'article': None})
+
+        if request.user != article.author:
+
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        form = ArticleForm(request.POST, request.FILES, instance=article)
+
+        if form.is_valid():
+            
+            title = form.cleaned_data['title']
+
+            summary = form.cleaned_data['summary']
+
+            content = form.cleaned_data['content']
+
+            if any(word in title.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+
+                storage.used = True
+
+                messages.error(request, "The title of your article contains innappropriate content and was not edited.", extra_tags="danger")
+
+            elif any(word in summary.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+
+                storage.used = True
+
+                messages.error(request, "The summary of your article contains innappropriate content and was not edited.", extra_tags="danger")
+
+            elif any(word in content.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+                
+                storage.used = True
+
+                messages.error(request, "The content of your article contains innappropriate content and was not edited.", extra_tags="danger")
+        
+            else:
+
+                updated_article = form.save()
+                
+                messages.success(request, "Your article has been edited successfully.")
+                
+                return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=updated_article.slug)
+
+        context_dict = self.create_context_dict(article)
+        
+        context_dict['form'] = form  
+        
+        return render(request, 'main/edit_article.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class DeleteArticleView(View):
+
+    def get_article(self, category_name_slug, article_title_slug):
+        
+        try:
+        
+            return Article.objects.get(category__slug=category_name_slug, slug=article_title_slug)
+        
+        except Article.DoesNotExist:
+        
+            return None
+
+    def get(self, request, category_name_slug, article_title_slug):
+        
+        article = self.get_article(category_name_slug, article_title_slug)
+
+        if article is None:
+        
+            return render(request, 'main/delete_article.html', {'article': None})
+
+        if request.user != article.author:
+        
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        return render(request, 'main/delete_article.html', {'article': article})
+
+    def post(self, request, category_name_slug, article_title_slug):
+        
+        article = self.get_article(category_name_slug, article_title_slug)
+
+        if article is None or request.user != article.author:
+        
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        category_slug = article.category.slug
+        
+        article.delete()
+
+        return redirect('main:show_category', category_name_slug=category_slug)
+
+@method_decorator(login_required, name='dispatch')
+class EditCommentView(View):
+
+    def get_article(self, category_name_slug, article_title_slug):
+        
+        try:
+        
+            return Article.objects.get(category__slug=category_name_slug, slug=article_title_slug)
+        
+        except Article.DoesNotExist:
+        
+            return None
+
+    def get_comment(self, comment_id):
+        
+        try:
+        
+            return Comment.objects.get(id=comment_id)
+        
+        except Comment.DoesNotExist:
+        
+            return None
+
+    def is_editable(self, comment):
+
+        return (timezone.now() - comment.written_on) < timedelta(hours=24)
+
+    def create_context_dict(self, article, comment, can_edit):
+        
+        return {'article': article, 'comment': comment, 'can_edit': can_edit, 'form': CommentForm(instance=comment)}
+
+    def get(self, request, category_name_slug, article_title_slug, comment_id):
+        
+        article = self.get_article(category_name_slug, article_title_slug)
+        
+        comment = self.get_comment(comment_id)
+
+        can_edit = self.is_editable(comment)
+
+        if article is None or comment is None:
+        
+            return render(request, 'main/edit_comment.html', {'comment': None})
+
+        if request.user != comment.author:
+        
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        context_dict = self.create_context_dict(article, comment, can_edit)
+        
+        return render(request, 'main/edit_comment.html', context_dict)
+
+    def post(self, request, category_name_slug, article_title_slug, comment_id):
+        
+        article = self.get_article(category_name_slug, article_title_slug)
+        
+        comment = self.get_comment(comment_id)
+
+        can_edit = self.is_editable(comment)
+
+        if article is None or comment is None:
+        
+            return render(request, 'main/edit_comment.html', {'comment': None})
+
+        if request.user != comment.author:
+        
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        form = CommentForm(request.POST, instance=comment)
+
+        if form.is_valid():
+
+            content = form.cleaned_data['content']
+
+            if any(word in content.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+                
+                storage.used = True
+
+                messages.error(request, "Your comment contains innappropriate content and was not edited.", extra_tags="danger")
+        
+            else:
+
+                form.save()
+
+                article.updated_on = timezone.now()
+
+                article.save()
+
+                messages.success(request, "Your comment has been edited successfully.")
+        
+                return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        context_dict = self.create_context_dict(article, comment, can_edit)
+
+        context_dict['form'] = form
+
+        return render(request, 'main/edit_comment.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class DeleteCommentView(View):
+
+    def get_article(self, category_name_slug, article_title_slug):
+        
+        try:
+        
+            return Article.objects.get(category__slug=category_name_slug, slug=article_title_slug)
+        
+        except Article.DoesNotExist:
+        
+            return None
+
+    def get_comment(self, comment_id):
+        
+        try:
+        
+            return Comment.objects.get(id=comment_id)
+        
+        except Comment.DoesNotExist:
+        
+            return None
+
+    def is_deletable(self, comment):
+
+        return (timezone.now() - comment.written_on) < timedelta(hours=24)
+
+    def create_context_dict(self, article, comment, can_delete):
+
+        return {'article': article, 'comment': comment, 'can_delete': can_delete}
+
+    def get(self, request, category_name_slug, article_title_slug, comment_id):
+        
+        article = self.get_article(category_name_slug, article_title_slug)
+
+        comment = self.get_comment(comment_id)
+
+        can_delete = self.is_deletable(comment)
+
+        if article is None or comment is None:
+        
+            return render(request, 'main/delete_comment.html', {'comment': None})
+
+        if request.user != comment.author:
+        
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        context_dict = self.create_context_dict(article, comment, can_delete)
+
+        return render(request, 'main/delete_comment.html', context_dict)
+
+    def post(self, request, category_name_slug, article_title_slug, comment_id):
+        
+        article = self.get_article(category_name_slug, article_title_slug)
+
+        comment = self.get_comment(comment_id)
+
+        if article is None or comment is None:
+
+            return render(request, 'main/delete_comment.html', {'comment': None})
+        
+        if request.user != comment.author:
+        
+            return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
+
+        article_slug = article.slug
+        
+        comment.delete()
+
+        article.updated_on = timezone.now()
+
+        article.save()
+
+        return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_slug)
 
 class LikeArticleView(View):
 
@@ -739,21 +1379,21 @@ class DislikeArticleView(View):
         return HttpResponse(article.points)
 
 @login_required
-def favourite_article(request, article_slug):
+def favourite_article(request, article_title_slug):
     
-    article = get_object_or_404(Article, slug=article_slug)
+    article = get_object_or_404(Article, slug=article_title_slug)
     
-    user_profile = request.user.userprofile
+    userprofile = request.user.userprofile
 
-    if article in user_profile.favourite_articles.all():
+    if article in userprofile.favourite_articles.all():
     
-        user_profile.favourite_articles.remove(article)
+        userprofile.favourite_articles.remove(article)
     
     else:
     
-        user_profile.favourite_articles.add(article)
+        userprofile.favourite_articles.add(article)
 
-    return redirect('rango:show_article', category_name_slug=article.category.slug, article_title_slug=article.slug)
+    return redirect('main:show_article', category_name_slug=article.category.slug, article_title_slug=article.slug)
 
 class ForumListView(View):
 
@@ -765,7 +1405,7 @@ class ForumListView(View):
         
         context_dict['forums'] = forums
 
-        return render(request, 'rango/forum_list.html', context_dict)
+        return render(request, 'main/forum_list.html', context_dict)
     
 class AddForumView(View):
 
@@ -774,18 +1414,18 @@ class AddForumView(View):
         
         if not request.user.is_staff:
 
-            return redirect(reverse('rango:index'))
+            return redirect(reverse('main:index'))
 
         form = ForumForm()
 
-        return render(request, 'rango/add_forum.html', {'form': form})
+        return render(request, 'main/add_forum.html', {'form': form})
     
     @method_decorator(login_required)
     def post(self, request):
         
         if not request.user.is_staff:
 
-            return redirect(reverse('rango:index'))
+            return redirect(reverse('main:index'))
 
         form = ForumForm(request.POST)
 
@@ -793,18 +1433,112 @@ class AddForumView(View):
 
             form.save(commit=True)
 
-            return redirect(reverse('rango:index'))
+            return redirect(reverse('main:index'))
         
         else:
 
             print(form.errors)
         
-        return render(request, 'rango/add_forum.html', {'form': form})
+        return render(request, 'main/add_forum.html', {'form': form})
 
-class ThreadListView(View):
+@method_decorator(login_required, name='dispatch')
+class EditForumView(View):
+
+    def get_forum(self, forum_name_slug):
+
+        try:
+
+            return Forum.objects.get(slug=forum_name_slug)
+        
+        except Forum.DoesNotExist:
+
+            return None
+
+    def create_context_dict(self, forum):
+        
+        return {'forum': forum, 'form': ForumForm(instance=forum)}
+
+    def get(self, request, forum_name_slug):
+        
+        if not request.user.is_staff:
+
+            return redirect('main:thread_list', forum_name_slug)
+
+        forum = self.get_forum(forum_name_slug)
+
+        context_dict = self.create_context_dict(forum)
+        
+        return render(request, 'main/edit_forum.html', context_dict)
+
+    def post(self, request, forum_name_slug):
+
+        if not request.user.is_staff:
+
+            return redirect('main:thread_list', forum_name_slug)
+
+        forum = self.get_forum(forum_name_slug)
+
+        form = ForumForm(request.POST, instance=forum)
+
+        if form.is_valid():
+
+            updated_forum = form.save()
+            
+            return redirect('main:thread_list', forum_name_slug=updated_forum.slug)
+
+        context_dict = self.create_context_dict(forum)
+        
+        context_dict['form'] = form  
+        
+        return render(request, 'main/edit_forum.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class DeleteForumView(View):
+
+    def get_forum(self, forum_name_slug):
+        
+        try:
+        
+            return Forum.objects.get(slug=forum_name_slug)
+        
+        except Forum.DoesNotExist:
+        
+            return None
 
     def get(self, request, forum_name_slug):
 
+        if not request.user.is_staff:
+
+            return redirect('main:thread_list', forum_name_slug=forum_name_slug)
+        
+        forum = self.get_forum(forum_name_slug)
+
+        if forum is None:
+        
+            return render(request, 'main/delete_forum.html', {'forum': None})
+
+        return render(request, 'main/delete_forum.html', {'forum': forum})
+
+    def post(self, request, forum_name_slug):
+
+        if not request.user.is_staff:
+
+            return redirect('main:thread_list', forum_name_slug=forum_name_slug)
+        
+        forum = self.get_forum(forum_name_slug)
+
+        if forum is None:
+        
+            return render(request, 'main/delete_forum.html', {'forum': None})
+        
+        forum.delete()
+
+        return redirect('main:forum_list')
+
+class ThreadListView(View):
+
+    def create_context_dict(self, forum_name_slug):
+        
         context_dict = {}
 
         try:
@@ -823,65 +1557,19 @@ class ThreadListView(View):
 
             context_dict['forum'] = None
 
-        return render(request, 'rango/thread_list.html', context_dict)
+        return context_dict
 
-class CreateThreadView(View):
-
-    def get_forum_name(self, forum_name_slug):
-    
-        try:
-    
-            forum = Forum.objects.get(slug=forum_name_slug)
-    
-        except Forum.DoesNotExist:
-    
-            forum = None
-    
-        return forum
-
-    @method_decorator(login_required)
     def get(self, request, forum_name_slug):
-    
-        forum = self.get_forum_name(forum_name_slug)
 
-        if forum is None:
-    
-            return redirect(reverse('rango:index'))
+        context_dict = self.create_context_dict(forum_name_slug)
 
-        form = ThreadForm()
-    
-        return render(request, 'rango/create_thread.html', {'form': form, 'forum': forum})
-
-    @method_decorator(login_required)
-    def post(self, request, forum_name_slug):
-    
-        forum = self.get_forum_name(forum_name_slug)
-
-        if forum is None:
-    
-            return redirect(reverse('rango:index'))
-
-        form = ThreadForm(request.POST)
-
-        if form.is_valid():
-    
-            thread = form.save(commit=False)
-    
-            thread.forum = forum
-    
-            thread.author = request.user
-    
-            thread.save()
-
-            return redirect(reverse('rango:thread_list', kwargs={'forum_name_slug': forum.slug}))
-
-        return render(request, 'rango/create_thread.html', {'form': form, 'forum': forum})
+        return render(request, 'main/thread_list.html', context_dict)
 
 @method_decorator(login_required, name='dispatch')
 class ThreadDetailView(View):
 
     def create_context_dict(self, forum_name_slug, thread_title_slug):
-        
+
         context_dict = {}
 
         try:
@@ -894,7 +1582,7 @@ class ThreadDetailView(View):
 
             context_dict['thread'] = thread
 
-            posts = Post.objects.filter(thread=thread).order_by('created_on')
+            posts = Post.objects.filter(thread=thread).order_by('written_on')
 
             context_dict['posts'] = posts
 
@@ -929,7 +1617,7 @@ class ThreadDetailView(View):
     def get(self, request, forum_name_slug, thread_title_slug):
 
         context_dict = self.create_context_dict(forum_name_slug, thread_title_slug)
-        
+
         if context_dict['thread'] is None:
 
             context_dict['thread_not_found'] = True
@@ -937,10 +1625,18 @@ class ThreadDetailView(View):
         else:
 
             context_dict['thread_not_found'] = False
-        
+
         form = PostForm()
 
         context_dict['form'] = form
+
+        query = request.GET.get('query', '').strip()
+
+        if query:
+
+            context_dict['query'] = query
+
+            context_dict['result_list'] = run_query(query)
 
         poll = context_dict.get('poll')
 
@@ -950,54 +1646,476 @@ class ThreadDetailView(View):
 
             context_dict['poll_options'] = poll_options
 
-        return render(request, "rango/thread_detail.html", context_dict)
+        return render(request, "main/thread_detail.html", context_dict)
 
     def post(self, request, forum_name_slug, thread_title_slug):
-
+        
         context_dict = self.create_context_dict(forum_name_slug, thread_title_slug)
 
         form = PostForm(request.POST)
 
+        query = request.POST.get('query', '').strip()
+
+        if query:
+
+            context_dict['query'] = query
+
+            context_dict['result_list'] = run_query(query)
+
         if form.is_valid():
 
-            post = form.save(commit=False)
+            content = form.cleaned_data['content']
 
-            post.thread = context_dict.get('thread')
+            if any(word in content.lower() for word in BANNED_WORDS):
 
-            post.author = request.user
+                storage = messages.get_messages(request)
+                
+                storage.used = True
 
-            post.save()
+                messages.error(request, "Your post contains innappropriate content and was not submitted.", extra_tags="danger")
+        
+            else:
 
-            thread = context_dict.get('thread')
+                post = form.save(commit=False)
 
-            if thread:
+                post.thread = context_dict.get('thread')
+
+                post.author = request.user
+
+                post.save()
+
+                thread = context_dict.get('thread')
+
+                if thread:
+
+                    thread.updated_on = timezone.now()
+
+                    thread.save()
+
+                messages.success(request, "Your post has been submitted successfully.")
+
+                return redirect("main:thread_detail", forum_name_slug=context_dict['forum'].slug, thread_title_slug=thread.slug)
+
+        context_dict['form'] = form
+
+        return render(request, "main/thread_detail.html", context_dict)
+
+class CreateThreadView(View):
+
+    def get_forum_name(self, forum_name_slug):
+
+        try:
+
+            forum = Forum.objects.get(slug=forum_name_slug)
+
+        except Forum.DoesNotExist:
+
+            forum = None
+
+        return forum
+
+    @method_decorator(login_required)
+    def get(self, request, forum_name_slug):
+
+        forum = self.get_forum_name(forum_name_slug)
+
+        form = ThreadForm()
+
+        context_dict = {'form': form, 'forum': forum}
+
+        query = request.GET.get('query', '').strip()
+
+        if query:
+
+            context_dict['query'] = query
+
+            context_dict['result_list'] = run_query(query)
+
+        return render(request, 'main/create_thread.html', context_dict)
+
+    @method_decorator(login_required)
+    def post(self, request, forum_name_slug):
+
+        forum = self.get_forum_name(forum_name_slug)
+
+        form = ThreadForm(request.POST)
+
+        context_dict = {'form': form, 'forum': forum}
+
+        query = request.POST.get('query', '').strip()
+
+        if query:
+
+            context_dict['query'] = query
+
+            context_dict['result_list'] = run_query(query)
+
+        if form.is_valid():
+
+            title = form.cleaned_data['title']
+
+            topic = form.cleaned_data['topic']
+
+            if any(word in title.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+
+                storage.used = True
+
+                messages.error(request, "The title of your thread contains innappropriate content and was not submitted.", extra_tags="danger")
+
+            elif any(word in topic.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+
+                storage.used = True
+
+                messages.error(request, "The topic of your thread contains innappropriate content and was not submitted.", extra_tags="danger")
+
+            else:
+
+                thread = form.save(commit=False)
+
+                thread.author = request.user
+
+                thread.forum = forum
+
+                thread.save()
+
+                messages.success(request, "Your thread has been submitted successfully.")
+
+                return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread.slug)
+
+        return render(request, 'main/create_thread.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class EditThreadView(View):
+
+    def get_forum(self, forum_name_slug):
+
+        try:
+
+            return Forum.objects.get(slug=forum_name_slug)
+        
+        except Forum.DoesNotExist:
+
+            return None
+
+    def get_thread(self, thread_title_slug):
+        
+        try:
+        
+            return Thread.objects.get(slug=thread_title_slug)
+        
+        except Thread.DoesNotExist:
+        
+            return None
+
+    def create_context_dict(self, thread):
+        
+        return {'thread': thread, 'form': ThreadForm(instance=thread)}
+
+    def get(self, request, forum_name_slug, thread_title_slug):
+
+        forum = self.get_forum(forum_name_slug)
+
+        thread = self.get_thread(thread_title_slug)
+
+        if thread is None:
+
+            return render(request, 'main/edit_thread.html', {'thread': None})
+
+        if request.user != thread.author:
+
+            return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        context_dict = self.create_context_dict(thread)
+        
+        return render(request, 'main/edit_thread.html', context_dict)
+
+    def post(self, request, forum_name_slug, thread_title_slug):
+
+        forum = self.get_forum(forum_name_slug)
+
+        thread = self.get_thread(thread_title_slug)
+
+        if thread is None:
+
+            return render(request, 'main/edit_thread.html', {'thread': None})
+
+        if request.user != thread.author:
+
+            return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        form = ThreadForm(request.POST, instance=thread)
+
+        if form.is_valid():
+            
+            title = form.cleaned_data['title']
+
+            topic = form.cleaned_data['topic']
+
+            if any(word in title.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+
+                storage.used = True
+
+                messages.error(request, "The title of your thread contains innappropriate content and was not edited.", extra_tags="danger")
+
+            elif any(word in topic.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+
+                storage.used = True
+
+                messages.error(request, "The topic of your thread contains innappropriate content and was not edited.", extra_tags="danger")
+
+            else:
+
+                updated_thread = form.save()
+
+                messages.success(request, "Your thread has been edited successfully.")
+                
+                return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=updated_thread.slug)
+
+        context_dict = self.create_context_dict(thread)
+        
+        context_dict['form'] = form  
+        
+        return render(request, 'main/edit_thread.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class DeleteThreadView(View):
+
+    def get_thread(self, forum_name_slug, thread_title_slug):
+        
+        try:
+        
+            return Thread.objects.get(forum__slug=forum_name_slug, slug=thread_title_slug)
+        
+        except Thread.DoesNotExist:
+        
+            return None
+
+    def get(self, request, forum_name_slug, thread_title_slug):
+        
+        thread = self.get_thread(forum_name_slug, thread_title_slug)
+        
+        if thread is None:
+        
+            return render(request, 'main/delete_thread.html', {'thread': None})
+
+        if request.user != thread.author:
+        
+            return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        return render(request, 'main/delete_thread.html', {'thread': thread})
+
+    def post(self, request, forum_name_slug, thread_title_slug):
+        
+        thread = self.get_thread(forum_name_slug, thread_title_slug)
+
+        if thread is None or request.user != thread.author:
+        
+            return redirect('main:show_thread', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        forum_slug = thread.forum.slug
+        
+        thread.delete()
+
+        return redirect('main:thread_list', forum_name_slug=forum_slug)
+
+@method_decorator(login_required, name='dispatch')
+class EditPostView(View):
+
+    def get_thread(self, forum_name_slug, thread_title_slug):
+        
+        try:
+        
+            return Thread.objects.get(forum__slug=forum_name_slug, slug=thread_title_slug)
+        
+        except Thread.DoesNotExist:
+        
+            return None
+
+    def get_post(self, post_id):
+        
+        try:
+        
+            return Post.objects.get(id=post_id)
+        
+        except Post.DoesNotExist:
+        
+            return None
+
+    def is_editable(self, post):
+
+        return (timezone.now() - post.written_on) < timedelta(hours=24)
+
+    def create_context_dict(self, thread, post, can_edit):
+        
+        return {'thread': thread, 'post': post, 'can_edit': can_edit, 'form': PostForm(instance=post)}
+
+    def get(self, request, forum_name_slug, thread_title_slug, post_id):
+        
+        thread = self.get_thread(forum_name_slug, thread_title_slug)
+        
+        post = self.get_post(post_id)
+
+        can_edit = self.is_editable(post)
+
+        if thread is None or post is None:
+        
+            return render(request, 'main/edit_post.html', {'post': None})
+
+        if request.user != post.author:
+        
+            return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        context_dict = self.create_context_dict(thread, post, can_edit)
+        
+        return render(request, 'main/edit_post.html', context_dict)
+
+    def post(self, request, forum_name_slug, thread_title_slug, post_id):
+        
+        thread = self.get_thread(forum_name_slug, thread_title_slug)
+        
+        post = self.get_post(post_id)
+
+        can_edit = self.is_editable(post)
+
+        if thread is None or post is None:
+        
+            return render(request, 'main/edit_post.html', {'post': None})
+
+        if request.user != post.author:
+        
+            return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        form = PostForm(request.POST, instance=post)
+
+        if form.is_valid():
+
+            content = form.cleaned_data['content']
+
+            if any(word in content.lower() for word in BANNED_WORDS):
+
+                storage = messages.get_messages(request)
+                
+                storage.used = True
+
+                messages.error(request, "Your post contains innappropriate content and was not edited.", extra_tags="danger")
+        
+            else:
+
+                form.save()
 
                 thread.updated_on = timezone.now()
 
                 thread.save()
 
-            return redirect("rango:thread_detail", forum_name_slug=context_dict['category'].slug, thread_title_slug=thread.slug)
+                messages.success(request, "Your post has been edited successfully.")
+
+                return redirect("main:thread_detail", forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        context_dict = self.create_context_dict(thread, post, can_edit)
 
         context_dict['form'] = form
+
+        return render(request, 'main/edit_post.html', context_dict)
+
+@method_decorator(login_required, name='dispatch')
+class DeletePostView(View):
+
+    def get_thread(self, forum_name_slug, thread_title_slug):
         
-        return render(request, "rango/thread_detail.html", context_dict)
+        try:
+        
+            return Thread.objects.get(forum__slug=forum_name_slug, slug=thread_title_slug)
+        
+        except Thread.DoesNotExist:
+        
+            return None
+
+    def get_post(self, post_id):
+        
+        try:
+        
+            return Post.objects.get(id=post_id)
+        
+        except Post.DoesNotExist:
+        
+            return None
+
+    def is_deletable(self, post):
+
+        return (timezone.now() - post.written_on) < timedelta(hours=24)
+
+    def create_context_dict(self, thread, post, can_delete):
+
+        return {'thread': thread, 'post': post, 'can_delete': can_delete}
+
+    def get(self, request, forum_name_slug, thread_title_slug, post_id):
+        
+        thread = self.get_thread(forum_name_slug, thread_title_slug)
+
+        post = self.get_post(post_id)
+
+        can_delete = self.is_deletable(post)
+
+        if thread is None or post is None:
+        
+            return render(request, 'main/delete_post.html', {'post': None})
+
+        if request.user != post.author:
+        
+            return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        context_dict = self.create_context_dict(thread, post, can_delete)
+
+        return render(request, 'main/delete_post.html', context_dict)
+
+    def post(self, request, forum_name_slug, thread_title_slug, post_id):
+        
+        thread = self.get_thread(forum_name_slug, thread_title_slug)
+
+        post = self.get_post(post_id)
+
+        if thread is None or post is None:
+
+            return render(request, 'main/delete_post.html', {'post': None})
+        
+        if request.user != post.author:
+        
+            return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
+
+        thread_slug = thread.slug
+        
+        post.delete()
+
+        thread.updated_on = timezone.now()
+
+        thread.save()
+
+        return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_slug)
 
 @login_required
-def save_thread(request, thread_slug):
+def save_thread(request, thread_title_slug):
 
-    thread = get_object_or_404(Thread, slug=thread_slug)
+    thread = get_object_or_404(Thread, slug=thread_title_slug)
 
-    user_profile = request.user.userprofile
+    userprofile = request.user.userprofile
 
-    if thread in user_profile.saved_threads.all():
+    if thread in userprofile.saved_threads.all():
 
-        user_profile.saved_threads.remove(thread)
+        userprofile.saved_threads.remove(thread)
     
     else:
 
-        user_profile.saved_threads.add(thread)
+        userprofile.saved_threads.add(thread)
 
-    return redirect('rango:thread_detail', forum_name_slug=thread.forum.slug, thread_title_slug=thread.slug)
+    return redirect('main:thread_detail', forum_name_slug=thread.forum.slug, thread_title_slug=thread.slug)
 
 @method_decorator(login_required, name='dispatch')
 class PollVoteView(View):
@@ -1110,27 +2228,19 @@ class AddPollView(View):
             return None
 
     def get(self, request, forum_name_slug, thread_title_slug):
-        
+    
         if not request.user.is_staff:
+    
+            return redirect(reverse('main:index'))
 
-            return redirect(reverse('rango:index'))
-    
         forum = self.get_forum(forum_name_slug)
-    
-        if not forum:
-    
-            return redirect('rango:index')
 
         thread = self.get_thread(forum, thread_title_slug)
-    
-        if not thread:
-    
-            return redirect('rango:index')
 
         poll_form = PollForm()
-    
-        PollOptionFormSet = formset_factory(PollOptionForm, extra=3)
-    
+        
+        PollOptionFormSet = formset_factory(PollOptionForm, extra=0, min_num=2, max_num=5)
+
         option_formset = PollOptionFormSet()
 
         context_dict = {
@@ -1139,52 +2249,44 @@ class AddPollView(View):
             'poll_form': poll_form,
             'option_formset': option_formset,
         }
-    
-        return render(request, 'rango/add_poll.html', context_dict)
+
+        return render(request, 'main/add_poll.html', context_dict)
 
     def post(self, request, forum_name_slug, thread_title_slug):
         
         if not request.user.is_staff:
+        
+            return redirect(reverse('main:index'))
 
-            return redirect(reverse('rango:index'))
-    
         forum = self.get_forum(forum_name_slug)
-    
-        if not forum:
-    
-            return redirect('rango:index')
 
         thread = self.get_thread(forum, thread_title_slug)
-    
-        if not thread:
-    
-            return redirect('rango:index')
 
         poll_form = PollForm(request.POST)
 
-        PollOptionFormSet = formset_factory(PollOptionForm, extra=3)
-
+        PollOptionFormSet = formset_factory(PollOptionForm, extra=0, min_num=2, max_num=5)
+        
         option_formset = PollOptionFormSet(request.POST)
 
         if poll_form.is_valid() and option_formset.is_valid():
-
+        
             poll = poll_form.save(commit=False)
-
+        
             poll.thread = thread
-
+        
             poll.save()
 
             for option_form in option_formset:
-
+        
                 if option_form.cleaned_data.get("option_text"):
-
+        
                     option = option_form.save(commit=False)
-
+        
                     option.poll = poll
-
+        
                     option.save()
 
-            return redirect('rango:thread_detail', forum_name_slug=forum.slug, thread_title_slug=thread.slug)
+            return redirect('main:thread_detail', forum_name_slug=forum.slug, thread_title_slug=thread.slug)
 
         context_dict = {
             'forum': forum,
@@ -1193,4 +2295,93 @@ class AddPollView(View):
             'option_formset': option_formset,
         }
 
-        return render(request, 'rango/add_poll.html', context_dict)
+        return render(request, 'main/add_poll.html', context_dict)
+
+class SearchView(View):
+
+    def get(self, request, *args, **kwargs):
+        
+        query = request.GET.get('q', '')
+        
+        if query:
+
+            articles = Article.objects.filter(
+                Q(title__icontains=query) | 
+                Q(summary__icontains=query) | 
+                Q(content__icontains=query)
+            ).distinct()
+
+            threads = Thread.objects.filter(
+                Q(topic__icontains=query) | 
+                Q(title__icontains=query)
+            ).distinct()
+        
+        else:
+        
+            articles = []
+        
+            threads = []
+
+        context_dict = {
+            'query': query,
+            'articles': articles,
+            'threads': threads,
+        }
+
+        return render(request, 'main/search_results.html', context_dict)
+
+def get_category_list(max_results=0, contains=''):
+    
+    category_list = []
+    
+    if contains:
+    
+        category_list = Category.objects.filter(name__icontains=contains).order_by('name')
+    
+    else:
+    
+        category_list = Category.objects.order_by('name')
+    
+    if max_results > 0:
+    
+        if len(category_list) > max_results:
+    
+            category_list = category_list[:max_results]
+    
+    return category_list
+
+def get_forum_list(max_results=0, contains=''):
+    
+    forum_list = []
+    
+    if contains:
+    
+        forum_list = Forum.objects.filter(name__icontains=contains).order_by('name')
+    
+    else:
+    
+        forum_list = Forum.objects.order_by('name')
+    
+    if max_results > 0:
+    
+        if len(forum_list) > max_results:
+    
+            forum_list = forum_list[:max_results]
+    
+    return forum_list
+
+class CategoryForumSuggestionView(View):
+    
+    def get(self, request):
+    
+        suggestion = request.GET.get('suggestion', '')
+
+        category_list = get_category_list(max_results=5, contains=suggestion)
+
+        forum_list = get_forum_list(max_results=5, contains=suggestion)
+
+        categories_html = render_to_string('main/categories.html', {'categories': category_list, 'current_category': None})
+
+        forums_html = render_to_string('main/forums.html', {'forums': forum_list, 'current_forum': None})
+
+        return JsonResponse({'categories': categories_html, 'forums': forums_html})

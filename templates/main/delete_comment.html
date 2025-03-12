@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+
+{% block title_block %}
+    {% if article %}
+        Delete Comment: {{ article.title }}
+    {% else %}
+        Unknown Article/Comment
+    {% endif %}
+{% endblock %}
+
+{% block body_block %}
+    {% if article %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Delete Comment</h1>
+                
+                <div>
+                    <h3 class="jumbotron-subject">
+                        You are trying to delete your comment in the {{ article.title }} article.
+                    </h3>
+                    
+                    <p class="jumbotron-info">
+                        Please make sure this is what you are trying to do because you will not be able to recover this comment.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mt-3">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            {% if can_delete %}
+                                <h5>Are you sure?</h5>
+                    
+                                <p>You're within the time limit to delete this comment! You will have an opportunity to fill out a survey about your experience after.</p>
+
+                                <form method="post">
+                                    {% csrf_token %}
+                                    
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <span data-feather="trash-2"></span> Yes, delete my comment
+                                    </button>
+                                    
+                                    <a href="{% url 'main:edit_comment' article.category.slug article.slug comment.id %}" class="btn btn-secondary btn-sm">
+                                        <span data-feather="x-circle"></span> Cancel
+                                    </a>
+                                </form>
+                            {% else %}
+                                <h5>Time limit</h5>
+                                
+                                <p>You're not within the time limit to delete this comment! Since this is the case, you will need to write to our support team about deleting this comment. You can find this information on our <a href="{% url 'main:contact' %}">Contact</a> page.</p>
+                                
+                                <a href="{% url 'main:show_article' article.category.slug article.slug %}" class="btn btn-primary btn-sm">
+                                    <span data-feather="arrow-left-circle"></span> Back to {{ article.title }}
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="jumbotron p-4">
+            <div class="container">
+                <h1 class="jumbotron-heading">Article/Comment Not Found</h1>
+    
+                <div>
+                    <h3 class="jumbotron-subject">
+                        Sorry, the article or comment you're trying to delete doesn't exist.
+                    </h3>
+    
+                    <p class="jumbotron-info">
+                        Make sure you have the correct URL and that you are the author of this comment.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
