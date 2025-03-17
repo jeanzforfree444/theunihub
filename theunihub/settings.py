@@ -76,6 +76,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.media',
+                "main.context_processors.translator_api_key",
             ],
         },
     },
@@ -167,3 +168,18 @@ STATICFILES_DIRS = [STATIC_DIR, ]
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 CONTACT_EMAIL = 'info@theunihub.co.uk'
+
+
+# Translation (Microsoft API)
+
+TRANSLATOR_KEY_FILE = os.path.join(BASE_DIR, "translator.key")
+
+if os.path.exists(TRANSLATOR_KEY_FILE):
+    
+    with open(TRANSLATOR_KEY_FILE, "r") as f:
+    
+        TRANSLATOR_API_KEY = f.read().strip()
+
+else:
+
+    TRANSLATOR_API_KEY = None
