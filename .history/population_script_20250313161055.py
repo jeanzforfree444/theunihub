@@ -301,7 +301,7 @@ def create_threads(users, forums):
     threads = []
 
     thread_data = [
-        {"title": "What's happening on campus this week?", "forum": "UofG General Discussion", "topic": "Campus Events", "university": "glasgow"},
+        {"title": "What's happening on campus this week?", "forum": "UofG General Discussion", "topic": "Looking For Fun Campus Events?", "university": "glasgow"},
         {"title": "Anyone else struggling with coursework?", "forum": "UofG General Discussion", "topic": "Academic Challenges", "university": "glasgow"},
         {"title": "Best places to study?", "forum": "UofG General Discussion", "topic": "Study Spaces", "university": "glasgow"},
         {"title": "Freshers events worth going to?", "forum": "Freshers & Orientation", "topic": "Freshers Week", "university": ""},
