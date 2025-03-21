@@ -5,6 +5,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from registration.backends.simple.views import RegistrationView
 
+#Registration view that redirects to a profile registration page upon successful signup
 class HubRegistrationView(RegistrationView):
     
     def get_success_url(self, user):
