@@ -23,7 +23,7 @@ class ArticleForm(forms.ModelForm):
 
     content = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'cols': 80}), max_length=Article.CONTENT_MAX_LENGTH, help_text="Please enter the content of the article:")
 
-    article_picture = forms.ImageField(required=True, help_text="Please upload an image for the article:")
+    article_picture = forms.ImageField(required=False, help_text="Please upload an image for the article:")
 
     related_university = forms.ChoiceField(choices=[('', 'Select a university (if applicable)')] + UNIVERSITY_CHOICES, required=False, help_text="Enter if this article is related to a specific university:")
 

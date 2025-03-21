@@ -4,6 +4,8 @@ $(document).ready(function() {
         $.get('/main/suggest/', {'suggestion': query}, function(data) {
             $('#categories-listing').html(data.categories);
             $('#forums-listing').html(data.forums);
+
+            feather.replace();
         });
     });
 

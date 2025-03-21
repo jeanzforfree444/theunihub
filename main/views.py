@@ -223,7 +223,7 @@ class AboutView(View):
             ('aaronhxx_1', 'founder_profile'),
             ('phoebe6504', 'developer_profile'),
             ('euan_galloway', 'marketing_profile'),
-            ('urango123', 'system_profile'),
+            ('urangoo123', 'system_profile'),
         ]
 
         profiles = []

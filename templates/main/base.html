@@ -32,11 +32,15 @@
                 <div class="collapse navbar-collapse d-flex w-100" id="navbarCollapse">
                     <ul class="navbar-nav mr-auto">
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:index' %}">Home</a></li>
+                        
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:about' %}">About</a></li>
+                        
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:category_list' %}">Categories</a></li>
+                        
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:forum_list' %}">Forums</a></li>
+                        
                         {% if user.is_authenticated %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'main:list_users' %}">Users</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'main:list_users' %}">Users</a></li>
                         {% endif %}
                     </ul>
                     
@@ -50,14 +54,15 @@
                                 <a class="nav-link" href="{% url 'main:profile' user.username %}">
                                     My Account
                                     {% if user.userprofile.profile_picture %}
-                                    <img class="profile-icon" src="{{ MEDIA_URL }}{{ user.userprofile.profile_picture }}" width="35" height="35" alt="{{ selected_user.username }}'s profile image" />
+                                        <img class="profile-icon" src="{{ MEDIA_URL }}{{ user.userprofile.profile_picture }}" width="35" height="35" alt="{{ selected_user.username }}'s profile image" />
                                     {% else %}
-                                    <img class="profile-icon" src="https://www.gravatar.com/avatar/?d=mp&s=35" width="35" height="35" alt="Default profile image" />
+                                        <img class="profile-icon" src="https://www.gravatar.com/avatar/?d=mp&s=35" width="35" height="35" alt="Default profile image" />
                                     {% endif %}
                                 </a>
                             </li>
                         {% else %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'registration_register' %}">Register</a></li>
+                            
                             <li class="nav-item"><a class="nav-link" href="{% url 'auth_login' %}">Sign In</a></li>
                         {% endif %}
                     </ul>
@@ -74,44 +79,51 @@
                 
                     <div class="sidebar-sticky">
                         {% block sidebar_block %}
-                        <div>
-                            <p class="sidebar-heading">
-                                {% if user.is_staff %}
-                                Categories <a href="{% url 'main:add_category' %}"><span data-feather="plus-circle"></span></a>
-                                {% else %}
-                                Categories
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div id="categories-listing">
-                            {% get_category_list category %}
-                        </div>
-                        <div>
-                            <p class="sidebar-heading">
-                                {% if user.is_staff %}
-                                Forums <a href="{% url 'main:add_forum' %}"><span data-feather="plus-circle"></span></a>
-                                {% else %}
-                                Forums
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div id="forums-listing">
-                            {% get_forum_list forum %}
-                        </div>
-                        {% if user.is_authenticated %}
-                        <div>
-                            <p class="sidebar-heading">Favourites Articles</p>
-                        </div>
-                        <div id="favourite_articles-listing">
-                            {% get_favourites_list article %}
-                        </div>
-                        <div>
-                            <p class="sidebar-heading">Saved Threads</p>
-                        </div>
-                        <div id="saved-threads-listing">
-                            {% get_saved_list thread %}
-                        </div>
-                        {% endif %}
+                            <div>
+                                <p class="sidebar-heading">
+                                    {% if user.is_staff %}
+                                        <a href="{% url 'main:category_list' %}" class="text-decoration-none text-reset">Categories</a> <a href="{% url 'main:add_category' %}"><span data-feather="plus-circle"></span></a>
+                                    {% else %}
+                                        Categories
+                                    {% endif %}
+                                </p>
+                            </div>
+                            
+                            <div id="categories-listing">
+                                {% get_category_list category %}
+                            </div>
+                            
+                            <div>
+                                <p class="sidebar-heading">
+                                    {% if user.is_staff %}
+                                    <a href="{% url 'main:forum_list' %}" class="text-decoration-none text-reset">Forums</a> <a href="{% url 'main:add_forum' %}"><span data-feather="plus-circle"></span></a>
+                                    {% else %}
+                                    Forums
+                                    {% endif %}
+                                </p>
+                            </div>
+                            
+                            <div id="forums-listing">
+                                {% get_forum_list forum %}
+                            </div>
+
+                            {% if user.is_authenticated %}
+                                <div>
+                                    <p class="sidebar-heading">Favourites Articles</p>
+                                </div>
+                                
+                                <div id="favourite_articles-listing">
+                                    {% get_favourites_list article %}
+                                </div>
+                                
+                                <div>
+                                    <p class="sidebar-heading">Saved Threads</p>
+                                </div>
+                                
+                                <div id="saved-threads-listing">
+                                    {% get_saved_list thread %}
+                                </div>
+                            {% endif %}
                         {% endblock %}
                     </div>
                 </nav>
@@ -119,22 +131,44 @@
                 <main role="main" class="col-md-9  ml-sm-auto col-lg-10 px-4">		
                     {% block body_block %}{% endblock %}<br />
                     
-                    <footer>
+                    <footer>                        
                         <p class="float-right">
                             <a href="#">
                                 <span data-feather="arrow-up"></span> Back to top
                             </a>
                         </p>
+
                         {% if user.is_staff %}
-                        <p>&copy; 2025 TheUniHub; A StudentLife Company &middot; <a href="{% url 'main:privacy' %}">Privacy</a> &middot; <a href="{% url 'main:terms' %}">Terms</a> &middot; <a href="{% url 'main:faqs' %}">FAQs</a> &middot; <a href="{% url 'main:show_stats' %}">Statistics</a></p>
+                            <p>&copy; 2025 TheUniHub; A StudentLife Company &middot; <a href="{% url 'main:privacy' %}">Privacy</a> &middot; <a href="{% url 'main:terms' %}">Terms</a> &middot; <a href="{% url 'main:faqs' %}">FAQs</a> &middot; <a href="{% url 'main:show_stats' %}">Statistics</a></p>
                         {% else %}
-                        <p>&copy; 2025 TheUniHub; A StudentLife Company &middot; <a href="{% url 'main:privacy' %}">Privacy</a> &middot; <a href="{% url 'main:terms' %}">Terms</a> &middot; <a href="{% url 'main:faqs' %}">FAQs</a></p>
+                            <p>&copy; 2025 TheUniHub; A StudentLife Company &middot; <a href="{% url 'main:privacy' %}">Privacy</a> &middot; <a href="{% url 'main:terms' %}">Terms</a> &middot; <a href="{% url 'main:faqs' %}">FAQs</a></p>
                         {% endif %}
+
+                        <div id="translator-api-key" data-key="{{ TRANSLATOR_API_KEY|default:'' }}" hidden></div>
+                                                
+                        <div class="language-selector">
+                            <label for="language-select">Choose Language:</label>
+                            
+                            <select id="language-select" class="form-control form-control-sm">
+                                <option value="en">English</option>
+                                
+                                <option value="es">Español (Spanish)</option>
+                                
+                                <option value="fr">Français (French)</option>
+                                
+                                <option value="de">Deutsch (German)</option>
+                                
+                                <option value="it">Italiano (Italian)</option>
+                                
+                                <option value="zh-Hans">简体中文 (Chinese)</option>
+                            </select>
+                        </div>
                     </footer>
                 </main>
             </div>
         </div>
-        
+
+        <script src="{% static 'js/bing_translate.js' %}" defer></script>
         <script src="{% static 'js/jquery.js' %}" defer></script>
         <script src="{% static 'js/search_filter.js' %}" defer></script>
         <script src="{% static 'js/like_dislike.js' %}" defer></script>

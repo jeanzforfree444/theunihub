@@ -43,8 +43,10 @@
                             <ul class="list-group mt-3">
                                 {% for forum in forums %}
                                     <li class="list-group-item mb-3">
-                                        <a href="{% url 'main:thread_list' forum.slug %}">{{ forum.name }}</a>
-                                        
+                                        <h6>
+                                            <a href="{% url 'main:thread_list' forum.slug %}">{{ forum.name }}</a>
+                                        </h6>
+
                                         <p>{{ forum.description }}</p>
                                     </li>
                                 {% endfor %}

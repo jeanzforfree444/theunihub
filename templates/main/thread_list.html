@@ -57,7 +57,9 @@
                                     <ul class="list-group mt-3">
                                         {% for thread in threads %}
                                             <li class="list-group-item mb-3">
-                                                <p><a href="{% url 'main:thread_detail' forum.slug thread.slug %}">{{ thread.title|safe }}</a></p>
+                                                <h6>
+                                                    <a href="{% url 'main:thread_detail' forum.slug thread.slug %}">{{ thread.title|safe }}</a>
+                                                </h6>
                 
                                                 Started by 
                                                 {% if thread.author %}

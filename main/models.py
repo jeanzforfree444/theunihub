@@ -48,6 +48,12 @@ UNIVERSITY_CHOICES = [
     ('berkeley', 'University of California, Berkeley'),
 ]
 
+def validate_image_file(value):
+    
+    if not value.name.endswith(('.png', '.jpg', '.jpeg')):
+    
+        raise ValidationError('Only PNG, JPG, and JPEG files are allowed.')
+
 class Category(models.Model):
 
     NAME_MAX_LENGTH = 150
@@ -96,7 +102,7 @@ class Article(models.Model):
 
     content = models.CharField(max_length=CONTENT_MAX_LENGTH)
 
-    article_picture = models.ImageField(upload_to='article_images', blank=True)
+    article_picture = models.ImageField(upload_to='article_images', validators=[validate_image_file], null=True, blank=True)
 
     views = models.IntegerField(default=0)
 
@@ -353,7 +359,7 @@ class UserProfile(models.Model):
 
     start_year = models.IntegerField(default=timezone.now().year, null=True, blank=True)
 
-    profile_picture = models.ImageField(upload_to='profile_pictures', null=False)
+    profile_picture = models.ImageField(upload_to='profile_pictures', validators=[validate_image_file], null=False)
 
     favourite_articles = models.ManyToManyField(Article, blank=True, related_name="favourited_by")
 

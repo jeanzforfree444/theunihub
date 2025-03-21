@@ -43,8 +43,10 @@
                             <ul class="list-group mt-3">
                                 {% for category in categories %}
                                     <li class="list-group-item mb-3">
-                                        <a href="{% url 'main:show_category' category.slug %}">{{ category.name }}</a>
-                                        
+                                        <h6>
+                                            <a href="{% url 'main:show_category' category.slug %}">{{ category.name }}</a>  ({{ category.views }} views &vert; {{ category.points }} points)
+                                        </h6>
+
                                         <p>{{ category.description }}</p>
                                     </li>
                                 {% endfor %}
