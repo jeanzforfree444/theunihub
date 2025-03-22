@@ -12,9 +12,10 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+# Base directory of the project
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+#Directories for templates, static files, and media
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -85,8 +86,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'theunihub.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/2.2/ref/settings/#databases
+# Database configuration using SQLite
 
 DATABASES = {
     'default': {
@@ -96,8 +96,7 @@ DATABASES = {
 }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
+# Password validation settings
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -115,6 +114,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+#Password hashers configuration
 PASSWORD_HASHERS = [
 'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 'django.contrib.auth.hashers.BCryptPasswordHasher',
@@ -123,8 +123,7 @@ PASSWORD_HASHERS = [
 ]
 
 
-# Registration
-
+# Registration settings
 REGISTRATION_OPEN = True
 
 REGISTRATION_AUTO_LOGIN = True
@@ -134,8 +133,7 @@ LOGIN_REDIRECT_URL = 'main:index'
 LOGIN_URL = 'auth_login'
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/2.2/topics/i18n/
+# Internationalization settings
 
 LANGUAGE_CODE = 'en-us'
 
@@ -148,22 +146,20 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Media files
-
+# Media files configuration
 MEDIA_ROOT = MEDIA_DIR
 
 MEDIA_URL = '/media/'
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
+# Static files configuration
 
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [STATIC_DIR, ]
 
 
-# Emailing (Contact)
+# Email backend configuration for development - prints emails to console
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 

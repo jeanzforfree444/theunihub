@@ -5,11 +5,14 @@
 
 <html lang="en">
     <head>
+        <!-- basic meta tags and favicon -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="Aaron Hughes">
     <link rel="icon" href="{% static 'images/logo.ico' %}">
+
+    <!-- Title with a block for additional title customisation -->
     <title>
         TheUniHub - {% block title_block %}The best student resource around.{% endblock %}
     </title>
@@ -23,6 +26,7 @@
     
     <body>
         <header>
+            <!-- Main navigation bar -->
             <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0">
                 <a class="navbar-brand p-2" href="{% url 'main:index' %}"><span class="company-logo"><i>TheUniHub</i></span></a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,24 +34,27 @@
                 </button>
 
                 <div class="collapse navbar-collapse d-flex w-100" id="navbarCollapse">
+                    <!-- Left side navigation links -->
                     <ul class="navbar-nav mr-auto">
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:index' %}">Home</a></li>
-                        
+
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:about' %}">About</a></li>
-                        
+
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:category_list' %}">Categories</a></li>
-                        
+
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:forum_list' %}">Forums</a></li>
-                        
+
                         {% if user.is_authenticated %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'main:list_users' %}">Users</a></li>
                         {% endif %}
                     </ul>
-                    
+
+                    <!-- Search form -->
                     <form class="flex-grow-1 mx-1" action="{% url 'main:search_results' %}" method="get">
                         <input type="search" id="search-bar" class="form-control w-100" placeholder="Search by keyword..." name="q" value="{{ request.GET.q }}" />
                     </form>                    
-                    
+
+                    <!-- Right side account links -->
                     <ul class="navbar-nav ml-auto">
                         {% if user.is_authenticated %}
                             <li class="nav-item">
@@ -62,7 +69,7 @@
                             </li>
                         {% else %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'registration_register' %}">Register</a></li>
-                            
+
                             <li class="nav-item"><a class="nav-link" href="{% url 'auth_login' %}">Sign In</a></li>
                         {% endif %}
                     </ul>
@@ -72,6 +79,7 @@
         
         <div class="container-fluid">
             <div class="row">
+                <!-- Sidebar with additional navigation and search -->
                 <nav class="col-md-2 d-none d-md-block bg-light sidebar">
                     <div class="w-85 ml-3">
                         <input type="search" id="search-input" class="form-control ds-input" placeholder="Search by names..." />
@@ -88,11 +96,11 @@
                                     {% endif %}
                                 </p>
                             </div>
-                            
+
                             <div id="categories-listing">
                                 {% get_category_list category %}
                             </div>
-                            
+
                             <div>
                                 <p class="sidebar-heading">
                                     {% if user.is_staff %}
@@ -102,7 +110,7 @@
                                     {% endif %}
                                 </p>
                             </div>
-                            
+
                             <div id="forums-listing">
                                 {% get_forum_list forum %}
                             </div>
@@ -111,27 +119,72 @@
                                 <div>
                                     <p class="sidebar-heading">Favourites Articles</p>
                                 </div>
-                                
+
                                 <div id="favourite_articles-listing">
                                     {% get_favourites_list article %}
                                 </div>
-                                
+
                                 <div>
                                     <p class="sidebar-heading">Saved Threads</p>
                                 </div>
-                                
+
                                 <div id="saved-threads-listing">
                                     {% get_saved_list thread %}
                                 </div>
                             {% endif %}
+                        <!-- Categories section (with admin add link if user is staff) -->
+                        <div>
+                            <p class="sidebar-heading">
+                                {% if user.is_staff %}
+                                Categories <a href="{% url 'main:add_category' %}"><span data-feather="plus-circle"></span></a>
+                                {% else %}
+                                Categories
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div id="categories-listing">
+                            {% get_category_list category %}
+                        </div>
+                        <!-- Forums section (with admin add link if user is staff) -->
+                        <div>
+                            <p class="sidebar-heading">
+                                {% if user.is_staff %}
+                                Forums <a href="{% url 'main:add_forum' %}"><span data-feather="plus-circle"></span></a>
+                                {% else %}
+                                Forums
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div id="forums-listing">
+                            {% get_forum_list forum %}
+                        </div>
+                        <!-- Favourites and saved threads shown only for authenticated users -->
+                        {% if user.is_authenticated %}
+                        <div>
+                            <p class="sidebar-heading">Favourites Articles</p>
+                        </div>
+                        <div id="favourite_articles-listing">
+                            {% get_favourites_list article %}
+                        </div>
+                        <div>
+                            <p class="sidebar-heading">Saved Threads</p>
+                        </div>
+                        <div id="saved-threads-listing">
+                            {% get_saved_list thread %}
+                        </div>
+                        {% endif %}
                         {% endblock %}
                     </div>
                 </nav>
-                
+
+                <!-- Main content area where where page-specific content is rendered -->
                 <main role="main" class="col-md-9  ml-sm-auto col-lg-10 px-4">		
                     {% block body_block %}{% endblock %}<br />
                     
-                    <footer>                        
+                    <footer>
+
+                    <!-- Footer with navigation links and copyright -->
+                    <footer>
                         <p class="float-right">
                             <a href="#">
                                 <span data-feather="arrow-up"></span> Back to top
@@ -145,21 +198,21 @@
                         {% endif %}
 
                         <div id="translator-api-key" data-key="{{ TRANSLATOR_API_KEY|default:'' }}" hidden></div>
-                                                
+
                         <div class="language-selector">
                             <label for="language-select">Choose Language:</label>
-                            
+
                             <select id="language-select" class="form-control form-control-sm">
                                 <option value="en">English</option>
-                                
+
                                 <option value="es">Español (Spanish)</option>
-                                
+
                                 <option value="fr">Français (French)</option>
-                                
+
                                 <option value="de">Deutsch (German)</option>
-                                
+
                                 <option value="it">Italiano (Italian)</option>
-                                
+
                                 <option value="zh-Hans">简体中文 (Chinese)</option>
                             </select>
                         </div>
@@ -167,6 +220,8 @@
                 </main>
             </div>
         </div>
+
+        <!-- JavaScript files for interactivity and functionality -->
 
         <script src="{% static 'js/bing_translate.js' %}" defer></script>
         <script src="{% static 'js/jquery.js' %}" defer></script>
@@ -178,6 +233,7 @@
         <script src="{% static 'js/poll_vote.js' %}" defer></script>
         <script src="{% static 'js/add_poll.js' %}" defer></script>
         <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
+        <!-- Fallback for jQuery if not loaded -->
         <script>window.jQuery || document.write('<script src="https://getbootstrap.com/docs/4.2/assets/js/vendor/jquery-slim.min.js"><\/script>')</script><script src="https://getbootstrap.com/docs/4.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-zDnhMsjVZfS3hiP7oCBRmfjkQC4fzxVxFhBx8Hkz2aZX8gEvA/jsP3eXRCvzTofP" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.9.0/feather.min.js"></script>
         <script src="https://getbootstrap.com/docs/4.2/examples/dashboard/dashboard.js"></script>
