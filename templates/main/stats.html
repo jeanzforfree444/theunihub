@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 {% extends 'main/base.html' %}
-{% load staticfiles %}
+{% load static %}
 
 {% block title_block %}
     Statistics
@@ -15,7 +15,7 @@
                 <h3 class="jumborton-subject">
                     The statistics behind <span class="company-name"><i>TheUniHub</i></span>.
                 </h3>
-                <p class="jumbotron-info">Here is information about views and points for categories and articles.</p>
+                <p class="jumbotron-info">Here is information about views and points for categories, articles, forums, and threads as well as a breakdown of our users.</p>
             </div>
         </div>
     </div>
@@ -45,8 +45,6 @@
                             <li class="list-group-item"><strong>Total Threads:</strong> {{ total_threads }}</li>
             
                             <li class="list-group-item"><strong>Total Posts:</strong> {{ total_posts }}</li>
-            
-                            <li class="list-group-item"><strong>Total Likes for All Posts:</strong> {{ total_likes }}</li>
                         </ul>
                     </div>
                 </div>

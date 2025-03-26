@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title_block %}
+    Page Not Found
+{% endblock %}
+
+{% block body_block %}
+    <div class="jumbotron p-4">
+        <div class="container">
+            <h1 class="jumbotron-heading">Page Not Found</h1>
+            
+            <div>
+                <h3 class="jumborton-subject">
+                    This page isn't on <span class="company-name"><i>TheUniHub</i></span>.
+                </h3>
+                
+                <p class="jumbotron-info">Make sure you have entered the URL correctly.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>What Might Have Happened?</h5>
+                        
+                        <p class="card-text">It looks like we couldn't find the page you're looking for. Here are some possible reasons:</p>
+                        
+                        <ul>
+                            <li><strong>Typo in the URL:</strong> Double-check the address bar for any spelling mistakes.</li>
+                        
+                            <li><strong>Page Moved or Removed:</strong> The content might have been relocated or deleted from TheUniHub.</li>
+                        
+                            <li><strong>Broken Link:</strong> You may have followed an outdated or incorrect link from somewhere else.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-6">
+                    <div class="card-body">
+                        <h5>Where to Go From Here</h5>
+                        
+                        <p class="card-text">Don't worry, we've got you covered! Here are some options to get back on track:</p>
+                        
+                        <ul>
+                            <li><a href="{% url 'main:index' %}">Return to the Homepage</a> to explore TheUniHub's main features.</li>
+                                            
+                            <li>Check out <a href="{% url 'main:category_list' %}">Categories</a> for articles and resources.</li>
+                        
+                            <li>Visit the <a href="{% url 'main:forum_list' %}">Forums</a> to browse discussions or start a new thread.</li>
+                        
+                            <li>Search for what you need using the search bar at the top of the page (if available in your base template).</li>
+                        
+                            <li>If you're logged in, head to your <a href="{% url 'main:profile' username=request.user.username %}">Profile</a> to manage your account.</li>
+                        </ul>
+                        
+                        <p class="card-text">Still lost? Contact us via the <a href="{% url 'main:contact' %}">Contact</a> page for assistance!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

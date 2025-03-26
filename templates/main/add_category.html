@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 {% extends 'main/base.html' %}
-{% load staticfiles %}
+{% load static %}
 
 {% block title_block %}
     Add a Category
@@ -21,6 +21,16 @@
             </div>
         </div>
     </div>
+
+    {% if messages %}
+        <div class="messages mb-4">
+            {% for message in messages %}
+                <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
     
     <div class="container mt-3">
         <div class="row">
@@ -55,7 +65,7 @@
                                     <br />
                                     
                                     <button class="btn btn-primary btn-sm" type="submit" name="submit">
-                                        <span data-feather="edit"></span> Create Category
+                                        <span data-feather="edit"></span> Add Category
                                     </button>
                             </form>
                         </div>

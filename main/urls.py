@@ -1,7 +1,7 @@
 from django.urls import path
 from main import views
 
-app_name = 'main' # Name of Django app
+app_name = 'main' # Name of the Django app
 
 urlpatterns = [
     # Home and static pages
@@ -14,7 +14,7 @@ urlpatterns = [
     path('values/', views.ValuesView.as_view(), name='values'),
     path('faqs/', views.FAQsView.as_view(), name='faqs'),
 
-    # Stats and user account management
+    # Statistics and profile management pages
     path('stats/', views.StatsView.as_view(), name='show_stats'),
     path('register_profile/', views.RegisterProfileView.as_view(), name='register_profile'),
     path('profile/<username>/', views.ProfileView.as_view(), name='profile'),
@@ -47,13 +47,15 @@ urlpatterns = [
     path('suggest/', views.CategoryForumSuggestionView.as_view(), name='category_forum_suggest'),
     path('search/', views.SearchView.as_view(), name='search_results'),
 
-    # Forum and thread management
+    # Forum management
     path('forum/', views.ForumListView.as_view(), name='forum_list'),
     path('forum/<slug:forum_name_slug>/', views.ThreadListView.as_view(), name='thread_list'),
     path('add_forum/', views.AddForumView.as_view(), name='add_forum'),
     path('forum/<slug:forum_name_slug>/edit_forum/', views.EditForumView.as_view(), name='edit_forum'),
     path('forum/<slug:forum_name_slug>/delete_forum/', views.DeleteForumView.as_view(), name='delete_forum'),
-    path('forum/<slug:forum_name_slug>/create/', views.CreateThreadView.as_view(), name='create_thread'),
+    
+    # Thread management
+    path('forum/<slug:forum_name_slug>/create_thread/', views.CreateThreadView.as_view(), name='create_thread'),
     path('forum/<slug:forum_name_slug>/thread/<slug:thread_title_slug>/', views.ThreadDetailView.as_view(), name='thread_detail'),
     path('forum/<slug:forum_name_slug>/thread/<slug:thread_title_slug>/edit_thread/', views.EditThreadView.as_view(), name='edit_thread'),
     path('forum/<slug:forum_name_slug>/thread/<slug:thread_title_slug>/delete_thread/', views.DeleteThreadView.as_view(), name='delete_thread'),
@@ -61,7 +63,7 @@ urlpatterns = [
     path('forum/<slug:forum_name_slug>/thread/<slug:thread_title_slug>/<int:post_id>/delete_post/', views.DeletePostView.as_view(), name='delete_post'),
     path('save/<slug:thread_title_slug>/', views.save_thread, name='save_thread'),
 
-    # Polls within threads
+    # Poll management
     path('forum/<slug:forum_name_slug>/thread/<slug:thread_title_slug>/vote/', views.PollVoteView.as_view(), name='poll_vote'),
     path('forum/<slug:forum_name_slug>/thread/<slug:thread_title_slug>/add_poll/', views.AddPollView.as_view(), name='add_poll'),
 ]

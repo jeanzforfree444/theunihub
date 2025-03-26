@@ -15,7 +15,7 @@ import os
 # Base directory of the project
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-#Directories for templates, static files, and media
+# Directories for templates, static files, and media
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -35,9 +35,9 @@ with open('secret.key', 'r') as f:
 SECRET_KEY = key
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'theunihub.pythonanywhere.com']
 
 
 # Application definition
@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -115,6 +116,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 #Password hashers configuration
+
 PASSWORD_HASHERS = [
 'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 'django.contrib.auth.hashers.BCryptPasswordHasher',
@@ -124,6 +126,7 @@ PASSWORD_HASHERS = [
 
 
 # Registration settings
+
 REGISTRATION_OPEN = True
 
 REGISTRATION_AUTO_LOGIN = True
@@ -147,6 +150,7 @@ USE_TZ = True
 
 
 # Media files configuration
+
 MEDIA_ROOT = MEDIA_DIR
 
 MEDIA_URL = '/media/'
@@ -157,6 +161,10 @@ MEDIA_URL = '/media/'
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [STATIC_DIR, ]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Email backend configuration for development - prints emails to console
@@ -179,3 +187,60 @@ if os.path.exists(TRANSLATOR_KEY_FILE):
 else:
 
     TRANSLATOR_API_KEY = None
+
+
+# Session Configuration (Visits)
+
+SESSION_SAVE_EVERY_REQUEST = True 
+
+SESSION_COOKIE_AGE = 1209600
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+
+# Logging (Errors)
+
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'formatters': {
+#         'verbose': {
+#             'format': '{levelname} {asctime} {module} {message}\n{exc_info}',
+#             'style': '{',
+#         },
+#     },
+#     'handlers': {
+#         'console': {
+#             'class': 'logging.StreamHandler',
+#             'level': 'DEBUG',
+#             'formatter': 'verbose',
+#         },
+#         'file': {
+#             'class': 'logging.FileHandler',
+#             'filename': os.path.join(BASE_DIR, 'debug.log'),
+#             'level': 'DEBUG',
+#             'formatter': 'verbose',
+#         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['console', 'file'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#         },
+#         'django.request': {
+#             'handlers': ['console', 'file'],
+#             'level': 'DEBUG',
+#             'propagate': False,
+#         },
+#         'django.server': {
+#             'handlers': ['console', 'file'],
+#             'level': 'DEBUG',
+#             'propagate': False,
+#         },
+#     },
+#     'root': {
+#         'handlers': ['console', 'file'],
+#         'level': 'DEBUG',
+#     },
+# }

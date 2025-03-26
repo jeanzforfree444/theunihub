@@ -25,9 +25,7 @@ class ArticleForm(forms.ModelForm):
 
     content = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'cols': 80}), max_length=Article.CONTENT_MAX_LENGTH, help_text="Please enter the content of the article:")
 
-    article_picture = forms.ImageField(required=False, help_text="Please upload an image for the article:")
-    #This field is required for the form to be submitted
-    article_picture = forms.ImageField(required=True, help_text="Please upload an image for the article:")
+    article_image = forms.ImageField(required=False, help_text="Please upload an image for the article:")
 
     related_university = forms.ChoiceField(choices=[('', 'Select a university (if applicable)')] + UNIVERSITY_CHOICES, required=False, help_text="Enter if this article is related to a specific university:")
 
@@ -35,9 +33,8 @@ class ArticleForm(forms.ModelForm):
 
         model = Article
 
-        fields = ('title', 'summary', 'content', 'article_picture', 'related_university')
-
-#Form for creating/updating a User instance
+        fields = ('title', 'summary', 'content', 'article_image', 'related_university')
+    
 class UserForm(forms.ModelForm):
     #Define a password field that uses a PasswordInput widget for secure input
     password = forms.CharField(widget=forms.PasswordInput())
@@ -68,16 +65,6 @@ class UserProfileForm(forms.ModelForm):
         
         fields = ('first_name', 'last_name', 'bio', 'university', 'school', 'department', 'degree', 'start_year', 'profile_picture',)
 
-#Form for updating the profile picture of a user
-class ProfilePictureForm(forms.ModelForm):
-    
-    class Meta:
-    
-        model = UserProfile #corresponds to UserProfile model
-        #Only includes the profile picture field
-        fields = ['profile_picture',]
-
-#Form for creating/updating a Comment instance
 class CommentForm(forms.ModelForm):
 
     content = forms.CharField(widget=forms.Textarea(attrs={'rows': 5, 'cols': 80}), max_length=Comment.CONTENT_MAX_LENGTH, help_text="Please enter your comment:")
@@ -130,9 +117,8 @@ class PostForm(forms.ModelForm):
         
         fields = ['content']
 
-#Form for creating/updating a Poll instance
-class PollForm(forms.ModelForm):
-    #Define a character field for the poll question
+class PollForm(forms.Form):
+
     question = forms.CharField(max_length=Poll.QUESTION_MAX_LENGTH, help_text="Enter the poll question:")
 
     class Meta:

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 {% extends 'main/base.html' %}
-{% load staticfiles %}
+{% load static %}
 
 {% block title_block %}
     {% if forum %}
@@ -58,7 +58,7 @@
                                         {% for thread in threads %}
                                             <li class="list-group-item mb-3">
                                                 <h6>
-                                                    <a href="{% url 'main:thread_detail' forum.slug thread.slug %}">{{ thread.title|safe }}</a>
+                                                    <a href="{% url 'main:thread_detail' forum.slug thread.slug %}">{{ thread.title|safe }}</a> - {{ thread.post_count }} posts
                                                 </h6>
                 
                                                 Started by 

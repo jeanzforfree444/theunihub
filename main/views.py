@@ -1,18 +1,20 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from main.models import Category, Article, UserProfile, Comment, Forum, Thread, Post, Poll, PollOption, UNIVERSITY_CHOICES
-from main.forms import CategoryForm, ArticleForm, UserProfileForm, ProfilePictureForm, CommentForm, ForumForm, ThreadForm, PostForm, PollForm, PollOptionForm
+from main.forms import CategoryForm, ArticleForm, UserProfileForm, CommentForm, ForumForm, ThreadForm, PostForm, PollForm, PollOptionForm
 from datetime import datetime, timedelta
 from main.bing_search import run_query
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib.auth.models import User
 from django.db.models import Count, Q
+from django.db import transaction
 from django.utils import timezone
 from django.contrib import messages
 from django.core.mail import send_mail
+from django.core.exceptions import ValidationError
 from django.contrib.auth import logout
 from django.utils.safestring import mark_safe
 from django.forms import formset_factory
@@ -20,83 +22,83 @@ from django.template.loader import render_to_string
 from django.conf import settings
 import json
 
-# List of banned words used for content filtering
+# Comprehensive list of banned words/phrases for content moderation across the platform
 BANNED_WORDS = [
-    # Profanity and Offensive Language
+    # Profanity and Offensive Language: Common expletives and derogatory terms
     "fuck", "shit", "damn", "bitch", "ass", "asshole", "bastard", "prick", "wanker",
     "bollocks", "dick", "cunt", "twat", "arse", "arsehole", "motherfucker", "slut", "whore",
     "piss", "fag", "faggot", "cock", "pussy", "bastard", "douche", "cocksucker", "dickhead",
     "shithead", "fuckhead", "fucktard", "nigger", "nigga", "chink", "spic", "kike", "gook",
 
-    # Sexual Content and Explicit Terms
+    # Sexual Content and Explicit Terms: Words related to explicit sexual acts or materials
     "porn", "hentai", "blowjob", "anal", "dildo", "vibrator", "cum", "orgasm",
     "pussy", "deepthroat", "threesome", "gangbang", "incest", "sex", "shag", "fucking",
     "sexually", "bukkake", "fisting", "rape", "fetish", "sexting", "cunnilingus", "masturbation",
     "moaning", "orgy", "ejaculate", "cumshot", "penis", "vagina", "erection", "busty", "boobs", "tits", 
 
-    # Violence, Threats, and Harmful Content
+    # Violence, Threats, and Harmful Content: Terms implying harm, violence, or threats
     "kill yourself", "die", "murder you", "bomb", "terrorist", "execute", "massacre", 
     "suicide", "genocide", "kill you", "murder", "gun", "shoot", "blood", "knife", "stab", 
     "explode", "rape", "attack", "abuse", "torture", "slaughter", "slit my wrists", "overdose", 
     "self harm", "hurt myself", "decapitate", "behead", "explode", "sniper", "violence", "war", "bloodshed",
 
-    # Ableism, Discriminatory Terms, and Insults
+    # Ableism, Discriminatory Terms, and Insults: Slurs and derogatory terms targeting disabilities or groups
     "retard", "cripple", "faggot", "dyke", "tranny", "spastic", "gimp", "moron", "idiot", "dumb", 
     "stupid", "imbecile", "imbecilic", "simpleton", "mongo", "idiotic", "retarded", "lunatic", 
     "psycho", "schizo", "bipolar", "autistic", "autism", "hysteric", "mentally ill", "psychiatric", 
 
-    # Drug-Related Terms and Substance Abuse
+    # Drug-Related Terms and Substance Abuse: References to illegal drugs and substance misuse
     "weed", "cocaine", "heroin", "meth", "ecstasy", "lsd", "shrooms", "ketamine", "overdose", 
     "marijuana", "opiate", "crack", "pill popper", "junkie", "high", "stoned", "blunt", "crackhead",
-    "addiction", "substance abuse", "snort", "dab", "trip", "needle", "suboxone", "poppers"
+    "addiction", "substance abuse", "snort", "dab", "trip", "needle", "suboxone", "poppers",
 
-    # Suicide and Self-Harm Related Content
+    # Suicide and Self-Harm Related Content: Phrases indicating self-harm or suicidal intent
     "cut myself", "end my life", "overdose", "slit my wrists", "i want to die", "kill myself", "kms",
     "suicidal", "suicide pact", "suicide hotline", "self injury", "self-harm", "overdose", "end it all",
     "i'm done", "feeling empty", "kill me", "ending my life",
 
-    # Spam, Scams, and Fraudulent Content
+    # Spam, Scams, and Fraudulent Content: Terms often used in phishing or scam attempts
     "free money", "click here", "earn cash", "work from home", "make millions", "hot singles", 
     "win a prize", "unsecured loan", "credit repair", "pyramid scheme", "get rich quick", 
     "sign up now", "invest now", "bitcoin", "free gift card", "earn money fast", "no upfront fee",
     "referral link", "clickbait", "giveaway", "job offer", "lottery winner", "prize",
 
-    # Hateful Speech and Discrimination
+    # Hateful Speech and Discrimination: Terms promoting hate or targeting specific groups
     "racist", "xenophobe", "homophobe", "sexist", "misogynist", "bigot", "transphobic", "antisemitic", 
     "homo", "fag", "colored", "minority", "gypsy", "redneck", "illegal immigrant", "slur", 
     "nazi", "white supremacist", "KKK", "N-word", "cracker", "white trash", "wetback", "sand nigger", 
     "cholo", "beaner", "terrorist", "bitch", "jew", "kike", "kuffar", "chink", "gook",
 
-    # Harmful or Inflammatory Phrases
+    # Harmful or Inflammatory Phrases: Aggressive or demeaning phrases
     "shut up", "fuck off", "piss off", "get lost", "drop dead", "go to hell", "suck my dick", "shut your mouth",
     "eat shit", "go away", "off yourself", "you're useless", "no one cares", "nobody loves you", 
     "you're pathetic", "you're a waste of space", "no one will miss you", "go kill yourself", 
     "you'll never amount to anything", "end it already",
 
-    # Inappropriate or Offensive Jokes, Memes, and Humor
+    # Inappropriate or Offensive Jokes, Memes, and Humor: Terms tied to offensive humor
     "yo mama", "your mom", "retarded joke", "cripple joke", "gay joke", "racist joke",
     "homophobic joke", "sexist joke", "offensive humor", "insensitive humor",
     "shock value", "inappropriate joke", "distasteful joke", "derogatory humor", "disrespectful",
 
-    # Offensive Terms and Slang (for any additional slurs, hate speech, or insults)
+    # Offensive Terms and Slang: Additional slurs and insults
     "bastard", "slut", "whore", "bimbo", "bastard", "asswipe", "shithead", "dickhead", "suck",
     "douchebag", "cockface", "cumdumpster", "fistfucker", "slutbag", "faggotbag", "pussyass", 
     "doucheass", "cockass", "assholeface", "twatwaffle", "assclown", "numbnuts", "dicktard", 
     "assmunch", "shitstain", "cockknocker", "motherfucker",
 
-    # Malicious Content (cyberbullying, harmful advice, etc.)
+    # Malicious Content: Terms tied to cyberbullying or harmful intent
     "bitchslap", "kill himself", "kill herself", "kill themself", "slay yourself", "cut deep", "hang yourself",
     "self destruct", "self loathe", "destroy yourself", "cyberbully", "send nudes", "fuck you", "die in a hole", 
     "go die", "get lost", "no one cares", "your life is worthless", "empty shell", "kill me now",
     "suck my balls", "eat my ass", "go suck a dick", "die already", "shut the hell up",
 
-    # Offensive Religious Terms (e.g., insults against religion, blasphemy, etc.)
+    # Offensive Religious Terms: Blasphemous or religion-insulting phrases
     "goddamn", "jesus christ", "holy shit", "christ on a cracker", "fucking hell", "god is dead", 
     "blasphemy", "atheism", "hellfire", "burn in hell", "damnation", "satanist", "devil worshipper",
     "god hate", "jesus freak", "holy fuck"
 ]
 
-# Mapping from university keys to their website URLs
+# Dictionary mapping university identifiers to their official websites for easy linking
 UNIVERSITY_WEBSITES = {
     "aberdeen": "https://www.abdn.ac.uk/",
     "abertay": "https://www.abertay.ac.uk/",
@@ -135,12 +137,23 @@ UNIVERSITY_WEBSITES = {
     "berkeley": "https://www.berkeley.edu/",
 }
 
-# ---------------------------
-# Cookie and Session Helpers
-# ---------------------------
+# ---------------------------#
+# Cookie and Session Helpers #
+# ---------------------------#
 
 def get_server_side_cookie(request, cookie, default_val=None):
-    # Retrieve a cookie value from the session, or return the default if not set
+    """
+    Retrieve a value stored in the session for a given cookie key.
+
+    Args:
+        request: The HTTP request object containing session data.
+        cookie (str): The key to look up in the session.
+        default_val: The value to return if the cookie is not found (defaults to None).
+
+    Returns:
+        The value associated with the cookie key in the session, or the default value if not found.
+    """
+
     val = request.session.get(cookie)
     
     if not val:
@@ -150,52 +163,118 @@ def get_server_side_cookie(request, cookie, default_val=None):
     return val
 
 def visitor_cookie_handler(request):
-    # Manage the 'visits' and 'last_visit' cookies stored in the session
-    # Increments the visit count if a new day has started
-    visits = int(get_server_side_cookie(request, 'visits', '1'))
-    
-    last_visit_cookie = get_server_side_cookie(request, 'last_visit', str(datetime.now())) 
-    
-    last_visit_time = datetime.strptime(last_visit_cookie, '%Y-%m-%d %H:%M:%S.%f')  
+    """
+    Track visitor sessions by updating visit count and last visit timestamp in the session.
 
-    # If more than a day has passed, increment the visits count
-    if (datetime.now() - last_visit_time).days > 0:
-        
-        visits += 1
-        
-        request.session['last_visit'] = str(datetime.now())  
+    Increments the visit count if a day has passed since the last visit. Stores the current
+    timestamp as the last visit and updates the visit count in the session.
+
+    Args:
+        request: The HTTP request object containing session data.
+    """
+
+    # Get the current visit count from the session, defaulting to 0
+    visits = int(get_server_side_cookie(request, 'visits', '0'))
     
+    # Retrieve the last visit timestamp from the session
+    last_visit_cookie = request.session.get('last_visit', None)
+
+    if last_visit_cookie is None:
+
+        # If no last visit is recorded, assume this is the first visit
+        visits = 1
+
     else:
+
+        try:
+            
+            # Parse the last visit timestamp from the session
+            last_visit_time = datetime.strptime(last_visit_cookie, '%Y-%m-%d %H:%M:%S.%f')
+        
+        except ValueError:
+
+            # If parsing fails, use the current time as a fallback
+            last_visit_time = datetime.now()
+
+        # Increment visits if more than a day has passed since the last visit
+        if (datetime.now() - last_visit_time).days > 0:
+
+            request.session['visits'] = visits
+
+            visits += 1
     
-        request.session['last_visit'] = last_visit_cookie
-    
+    # Update the session with the current timestamp and visit count
+    request.session['last_visit'] = str(datetime.now())
+
     request.session['visits'] = visits
 
-# ----------------
-# Main App Views
-#-----------------
+# ---------------------------#
+# View Classes               #
+# ---------------------------#
+
+class Custom404View(View):
+    """
+    Handle 404 errors by rendering a custom 404 page.
+
+    This view is triggered when a requested URL does not match any defined route.
+    """
+
+    def get(self, request, *args, **kwargs):
+        """
+        Render the custom 404 error page.
+
+        Args:
+            request: The HTTP request object.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            HttpResponse: Rendered 404.html template with a 404 status code.
+        """
+    
+        return render(request, 'main/404.html', status=404)
 
 class IndexView(View):
     """
-    Display the home page with the top categories, articles, comments, threads, and
-    any university-specific content for logged-in users.
+    Display the Jome page with top categories, articles, comments, and threads.
+
+    Shows the top 5 categories and articles by views/points, recent comments, and threads
+    with post counts. For authenticated users with a university, it also displays
+    university-specific articles and threads.
     """
+
     def get(self, request):
+        """
+        Render the homepage with dynamic content based on user authentication.
+
+        Updates the visitor session data and prepares context with popular content
+        and university-specific data if applicable.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered index.html template with context data.
+        """
 
         context_dict = {}
-        # Finding the top 5 categories, articles by points, comments and threads (ordered by recent updates)
+
+        # Fetch top 5 categories by views (descending order)
         category_list = Category.objects.order_by('-views')[:5]
 
         context_dict['categories'] = category_list
 
+        # Fetch top 5 articles by points (descending order)
         article_list = Article.objects.order_by('-points')[:5]
 
         context_dict['articles'] = article_list
         
+        # Fetch 5 most recent comments, prioritising edited ones
         comments = Comment.objects.order_by('-edited_on', '-written_on')[:5]
 
         context_dict['comments'] = comments
 
+        # Fetch 5 most recently updated threads with post counts, prioritising updated ones
         threads = Thread.objects.annotate(post_count=Count('post')).order_by('-updated_on', '-started_on')[:5]
         
         context_dict['threads'] = threads
@@ -206,7 +285,7 @@ class IndexView(View):
 
         university_website = None
 
-        # Filter university-related content for authenticated users with  a university set
+        # If user is authenticated and has a university set, fetch related content
         if request.user.is_authenticated and request.user.userprofile.university:
         
             user_university = request.user.userprofile.university
@@ -221,33 +300,45 @@ class IndexView(View):
         
         context_dict['university_threads'] = university_threads
 
-        # Boolean flag to indicate if the user has a university set
         context_dict['user_has_university'] = bool(request.user.is_authenticated and request.user.userprofile.university)
         
         context_dict['university_website'] = university_website
 
-        # Update session cookies related to visits
+        # Track visitor session data
         visitor_cookie_handler(request)
 
         return render(request, 'main/index.html', context_dict)
 
 class AboutView(View):
     """
-    Display the About page with team member profiles
+    Display the About page with information about the team members.
+
+    Shows profiles of predefined team members if they exist in the database.
     """
     def get(self, request):
-        # Prepare context with team member profiles for the About page
+        """
+        Render the About page with team member profiles and visit count.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered about.html template with team member data.
+        """
+        
         context_dict = {}
 
+        # List of team members with their usernames and profile keys
         team_members = [
             ('aaronhxx_1', 'founder_profile'),
             ('phoebe6504', 'developer_profile'),
             ('euan_galloway', 'marketing_profile'),
-            ('urangoo123', 'system_profile'),
+            ('worriless', 'system_profile'),
         ]
 
         profiles = []
 
+        # Fetch profiles for each team member if they exist
         for username, key in team_members:
 
             profile = UserProfile.objects.filter(user__username=username).first()
@@ -258,6 +349,7 @@ class AboutView(View):
 
         context_dict['team_members'] = profiles
 
+        # Update visitor session and include visit count
         visitor_cookie_handler(request)
 
         context_dict['visits'] = request.session.get('visits', 0)
@@ -265,40 +357,116 @@ class AboutView(View):
         return render(request, 'main/about.html', context_dict)
 
 class PrivacyView(View):
-    # Render the Privacy Policy Page
+    """
+    Display the Privacy Policy page.
+
+    A static page outlining the platform's privacy policies.
+    """
+
     def get(self, request):
+        """
+        Render the Privacy Policy page.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered privacy.html template.
+        """
 
         return render(request, 'main/privacy.html')
     
-class TermsView(View):  
-    # Render the Terms and Conditions page
+class TermsView(View):
+    """
+    Display the Terms and Conditions page.
+
+    A static page detailing the terms users must agree to for using the platform.
+    """
+
     def get(self, request):
+        """
+        Render the Terms and Conditions page.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered terms.html template.
+        """
 
         return render(request, 'main/terms.html')
     
 class MissionVisionView(View):
-    # Render the Mission and Vision page
+    """
+    Display the Mission and Vision page.
+
+    A static page describing the platform's mission and vision statements.
+    """
+
     def get(self, request):
+        """
+        Render the Mission and Vision page.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered mission_vision.html template.
+        """
 
         return render(request, 'main/mission_vision.html')
 
 class ContactView(View):
     """
-    Display and process the Contact form
-    GET: Render the contact form
-    POST: Process the form, send an email, and display success or error messages
+    Handle the Contact page for users to send messages to the site administrators.
+
+    GET: Displays an empty contact form.
+    POST: Processes the form submission, sends an email, and provides feedback.
     """
+
     def get(self, request):
-        
+        """
+        Render the Contact page with an empty form.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered contact.html template.
+        """
+
         return render(request, 'main/contact.html')
 
     def post(self, request):
-        # Process contact form submission and send an email
-        name = request.POST.get('name')
+        """
+        Process the contact form submission and send an email.
 
-        email = request.POST.get('email')
+        Validates that all fields are filled, sends an email to the admin, and
+        displays success or error messages accordingly.
 
-        message = request.POST.get('message')
+        Args:
+            request: The HTTP request object with POST data.
+
+        Returns:
+            HttpResponse: Rendered contact.html with feedback messages.
+        """
+
+        name = request.POST.get('name', '').strip()
+        
+        email = request.POST.get('email', '').strip()
+        
+        message = request.POST.get('message', '').strip()
+
+        # Ensure all fields are provided
+        if not all([name, email, message]):
+        
+            messages.error(request, "All fields are required.", extra_tags="danger")
+            
+            return render(request, 'main/contact.html', {
+                'name': name,
+                'email': email,
+                'message': message
+            })
 
         subject = f"New message from {name}"
 
@@ -306,6 +474,7 @@ class ContactView(View):
 
         try:
 
+            # Send email to the configured contact email address
             send_mail(
                 subject,
                 message_body,
@@ -327,33 +496,73 @@ class ContactView(View):
         })
 
 class ValuesView(View):
-    # Render the Values page
+    """
+    Display the Values page.
+
+    A static page outlining the core values of the platform.
+    """
+
     def get(self, request):
+        """
+        Render the Values page.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered values.html template.
+        """
 
         return render(request, 'main/values.html')
 
 class FAQsView(View):
-    # Render the FAQs page
+    """
+    Display the Frequently Asked Questions (FAQs) page.
+
+    A static page providing answers to common user questions.
+    """
+
     def get(self, request):
+        """
+        Render the FAQs page.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered faqs.html template.
+        """
 
         return render(request, 'main/faqs.html')
 
 class StatsView(View):
     """
-    Display various statistics (for staff only)
-    Statistics include counts of categories, articles, comments, users, forums, threads, posts
-    as well as aggregated points, views and likes
+    Display platform statistics for staff users only.
+
+    Shows counts of various entities (categories, articles, etc.) and aggregates
+    like total points and views. Includes per-category and per-forum breakdowns.
     """
 
     @method_decorator(login_required)
     def get(self, request):
-        # Only allow staff to access statistics
+        """
+        Render the statistics page if the user is staff.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered stats.html with statistics or redirect to index if not staff.
+        """
+
         context_dict = {}
-        
+
+        # Restrict access to staff members only
         if not request.user.is_staff:
 
             return redirect(reverse('main:index'))
         
+        # Basic counts of platform entities
         context_dict['total_categories'] = Category.objects.count()
         
         context_dict['total_articles'] = Article.objects.count()
@@ -368,17 +577,14 @@ class StatsView(View):
         
         context_dict['total_posts'] = Post.objects.count()
 
+        # Aggregate metrics across all articles and posts
         total_points = sum(article.points for article in Article.objects.all())
         
         total_views = sum(article.views for article in Article.objects.all())
 
-        total_likes = sum(post.likes for post in Post.objects.all())
-
         context_dict['total_points'] = total_points
         
         context_dict['total_views'] = total_views
-
-        context_dict['total_likes'] = total_likes
 
         # Prepare per-category and per-forum statistics
         category_stats = {}
@@ -437,15 +643,24 @@ class StatsView(View):
         return render(request, 'main/stats.html', context_dict)
 
 class RegisterProfileView(View):
-
     """
-    Allow logged-in users to register or update their user profile
-    GET: Render the profile registration form
-    POST: Process the form and save the profile
+    Allow logged-in users to create or update their user profile.
+
+    GET: Displays a blank profile form.
+    POST: Processes the form submission and saves the profile.
     """
 
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Render the profile registration form.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered profile_registration.html with an empty form.
+        """
 
         form = UserProfileForm()
 
@@ -455,6 +670,17 @@ class RegisterProfileView(View):
     
     @method_decorator(login_required)
     def post(self, request):
+        """
+        Process the profile form submission and save the profile.
+
+        Links the profile to the current user and redirects to the homepage on success.
+
+        Args:
+            request: The HTTP request object with POST data.
+
+        Returns:
+            HttpResponse: Redirect to index on success or re-render form with errors.
+        """
 
         form = UserProfileForm(request.POST, request.FILES)
 
@@ -470,20 +696,29 @@ class RegisterProfileView(View):
         
         else:
         
-            print(form.errors)
+            print(form.errors) # Log errors for debugging
         
         context_dict = {'form': form}
         
         return render(request, 'main/profile_registration.html', context_dict)
 
 class ProfileView(View):
-
     """
-    Display the profile page of a given user
-    Retrieves user details, articles, threads, and university information
+    Display a user's profile page with their details, articles, and threads.
+
+    Shows the selected user's profile, their authored content, and university info if applicable.
     """
 
     def get_user_details(self, username):
+        """
+        Fetch user details and related content for the profile page.
+
+        Args:
+            username (str): The username of the user to display.
+
+        Returns:
+            dict: Context dictionary with user data or None if user not found.
+        """
 
         context_dict = {}
     
@@ -529,6 +764,16 @@ class ProfileView(View):
     
     @method_decorator(login_required)
     def get(self, request, username):
+        """
+        Render the profile page for the specified user.
+
+        Args:
+            request: The HTTP request object.
+            username (str): The username of the user to display.
+
+        Returns:
+            HttpResponse: Rendered profile.html with user details.
+        """
         
         context_dict = self.get_user_details(username)
                 
@@ -536,16 +781,39 @@ class ProfileView(View):
     
     @method_decorator(login_required)
     def post(self, request, username):
+        """
+        Handle POST requests to the profile page (currently mirrors GET behavior).
+
+        Args:
+            request: The HTTP request object.
+            username (str): The username of the user to display.
+
+        Returns:
+            HttpResponse: Rendered profile.html with user details.
+        """
 
         context_dict = self.get_user_details(username)
                 
         return render(request, 'main/profile.html', context_dict)
 
 class EditProfileView(View):
+    """
+    Allow logged-in users to edit their own profile.
 
-    # Allow the logged-in user to edit their own profile
+    GET: Displays the current profile data in a form.
+    POST: Saves the updated profile data and redirects to the profile page.
+    """
 
     def get_user_profile(self, user):
+        """
+        Fetch or create the user's profile.
+
+        Args:
+            user: The User object to fetch the profile for.
+
+        Returns:
+            UserProfile: The user's profile instance.
+        """
 
         user_profile, created = UserProfile.objects.get_or_create(user=user)
 
@@ -553,6 +821,15 @@ class EditProfileView(View):
 
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Render the profile edit form with current data.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered edit_profile.html with the form.
+        """
 
         user_profile = self.get_user_profile(request.user)
 
@@ -562,6 +839,15 @@ class EditProfileView(View):
 
     @method_decorator(login_required)
     def post(self, request):
+        """
+        Process the profile edit form submission.
+
+        Args:
+            request: The HTTP request object with POST data.
+
+        Returns:
+            HttpResponse: Redirect to profile on success or re-render form with errors.
+        """
 
         user_profile = self.get_user_profile(request.user)
 
@@ -576,22 +862,34 @@ class EditProfileView(View):
         return render(request, 'main/edit_profile.html', {'form': form})
 
 class ListUsersView(View):
+    """
+    Display a list of all user profiles with filtering options.
 
+    Supports filtering by username or university and provides AJAX support for dynamic updates.
     """
-    List all user profiles with optional filtering by username or university.
-    Supports AJAX requests for dynamic loading of user profiles.
-    """
+
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Render the user list page or return AJAX response with filtered profiles.
+
+        Args:
+            request: The HTTP request object with optional GET parameters (search, university).
+
+        Returns:
+            HttpResponse: Rendered list_users.html or JsonResponse for AJAX requests.
+        """
 
         profiles = UserProfile.objects.all()
 
+        # Get distinct university keys from profiles
         university_keys = UserProfile.objects.exclude(university__isnull=True).exclude(university="").values_list('university', flat=True).distinct()
 
         university_dict = dict(UNIVERSITY_CHOICES)
 
         universities = [(key, university_dict.get(key, key)) for key in university_keys]
 
+        # Apply filters if provided
         search_query = request.GET.get('search', '').strip().lower()
         
         university_filter = request.GET.get('university', '').strip()
@@ -604,6 +902,7 @@ class ListUsersView(View):
         
             profiles = profiles.filter(university=university_filter)
 
+        # Handle AJAX requests for dynamic profile updates
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
 
             profiles_html = render_to_string('main/profiles.html', {'profiles': profiles, 'MEDIA_URL': settings.MEDIA_URL})
@@ -614,22 +913,47 @@ class ListUsersView(View):
 
 class DeleteAccountConfirmationView(View):
     """
-    Render a confirmation page for users who wish to delete their account.
+    Display a confirmation page for account deletion.
+
+    Allows users to confirm their intent to delete their account.
     """
+
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
+        """
+        Render the account deletion confirmation page.
+
+        Args:
+            request: The HTTP request object.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            HttpResponse: Rendered confirm_delete_account.html template.
+        """
   
         return render(request, 'main/confirm_delete_account.html')
 
 class DeleteAccountView(View):
-
     """
     Process the deletion of the current user's account.
-    Logs the user out and then deletes the account.
+
+    Logs out the user, deletes their account, and redirects to the homepage.
     """
 
     @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
+        """
+        Delete the user's account and log them out.
+
+        Args:
+            request: The HTTP request object.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            HttpResponse: Redirect to index with a success message.
+        """
   
         user = request.user
   
@@ -642,12 +966,20 @@ class DeleteAccountView(View):
         return redirect('main:index')
 
 class CategoryListView(View):
-
     """
-    Display a list of all categories.
+    Display a list of all categories available on the platform.
     """
 
     def get(self, request):
+        """
+        Render the category list page.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered category_list.html with all categories.
+        """
 
         context_dict = {}
 
@@ -658,13 +990,22 @@ class CategoryListView(View):
         return render(request, 'main/category_list.html', context_dict)
 
 class ShowCategoryView(View):
-
     """
-    Display a single category along with its associated articles.
-    Increments the view count for the category.
+    Display details of a specific category and its articles.
+
+    Increments the category's view count each time it is accessed.
     """
 
     def create_context_dict(self, category_name_slug):
+        """
+        Build the context dictionary for the category page.
+
+        Args:
+            category_name_slug (str): The slug of the category to display.
+
+        Returns:
+            dict: Context with category and article data or None if not found.
+        """
 
         context_dict = {}
 
@@ -691,19 +1032,40 @@ class ShowCategoryView(View):
         return context_dict
 
     def get(self, request, category_name_slug):
+        """
+        Render the category page with its articles.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            HttpResponse: Rendered category.html with category details.
+        """
 
         context_dict = self.create_context_dict(category_name_slug)
 
         return render(request, 'main/category.html', context_dict)
 
 class AddCategoryView(View):
-
     """
-    Allow staff to add a new category.
+    Allow staff users to create a new category.
+
+    GET: Displays an empty category form.
+    POST: Processes the form and saves the new category.
     """
 
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Render the add category form for staff users.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered add_category.html or redirect if not staff.
+        """
         
         if not request.user.is_staff:
 
@@ -715,6 +1077,15 @@ class AddCategoryView(View):
     
     @method_decorator(login_required)
     def post(self, request):
+        """
+        Process the category form submission and save the new category.
+
+        Args:
+            request: The HTTP request object with POST data.
+
+        Returns:
+            HttpResponse: Redirect to index on success or re-render form with errors.
+        """
         
         if not request.user.is_staff:
 
@@ -730,20 +1101,28 @@ class AddCategoryView(View):
         
         else:
 
-            print(form.errors)
+            print(form.errors) # Log errors for debugging
         
         return render(request, 'main/add_category.html', {'form': form})
 
 @method_decorator(login_required, name='dispatch')
 class EditCategoryView(View):
-
     """
-    Allows staff users to edit an existing category.
-    Retrieves the category by its slug, populates a form for editing,
-    and saves changes if the form is valid.
+    Allow staff users to edit an existing category.
+
+    Retrieves the category by slug, provides a pre-filled form, and saves changes.
     """
 
     def get_category(self, category_name_slug):
+        """
+        Fetch the category by its slug.
+
+        Args:
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            Category: The category object or None if not found.
+        """
 
         try:
 
@@ -754,10 +1133,29 @@ class EditCategoryView(View):
             return None
 
     def create_context_dict(self, category):
-        # Prepare the context with the current category and pre-populated form.
+        """
+        Build the context dictionary for the edit form.
+
+        Args:
+            category: The Category object to edit.
+
+        Returns:
+            dict: Context with category and form data.
+        """
+
         return {'category': category, 'form': CategoryForm(instance=category)}
 
     def get(self, request, category_name_slug):
+        """
+        Render the category edit form for staff users.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            HttpResponse: Rendered edit_category.html or redirect if not staff.
+        """
         
         if not request.user.is_staff:
 
@@ -770,6 +1168,16 @@ class EditCategoryView(View):
         return render(request, 'main/edit_category.html', context_dict)
 
     def post(self, request, category_name_slug):
+        """
+        Process the category edit form submission.
+
+        Args:
+            request: The HTTP request object with POST data.
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            HttpResponse: Redirect to category page on success or re-render form.
+        """
 
         if not request.user.is_staff:
 
@@ -793,13 +1201,22 @@ class EditCategoryView(View):
 
 @method_decorator(login_required, name='dispatch')
 class DeleteCategoryView(View):
-
     """
     Allow staff users to delete a category.
-    Displays a confirmation page and, upon confirmation, deletes the category.
+
+    Displays a confirmation page and deletes the category upon confirmation.
     """
 
     def get_category(self, category_name_slug):
+        """
+        Fetch the category by its slug.
+
+        Args:
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            Category: The category object or None if not found.
+        """
         
         try:
         
@@ -810,6 +1227,16 @@ class DeleteCategoryView(View):
             return None
 
     def get(self, request, category_name_slug):
+        """
+        Render the category deletion confirmation page.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            HttpResponse: Rendered delete_category.html or redirect if not staff.
+        """
 
         if not request.user.is_staff:
 
@@ -824,6 +1251,16 @@ class DeleteCategoryView(View):
         return render(request, 'main/delete_category.html', {'category': category})
 
     def post(self, request, category_name_slug):
+        """
+        Process the category deletion.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            HttpResponse: Redirect to category list on success or redirect if not staff.
+        """
 
         if not request.user.is_staff:
 
@@ -840,13 +1277,23 @@ class DeleteCategoryView(View):
         return redirect('main:category_list')
 
 class LikeCategoryView(View):
-
     """
-    Increase the 'points' for a category via an AJAX GET request.
+    Increment the points of a category via an AJAX request.
+
+    Used for user interaction to "like" a category.
     """
 
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Increase the category's points and return the new count.
+
+        Args:
+            request: The HTTP request object with GET parameter 'category_id'.
+
+        Returns:
+            HttpResponse: New points value or -1 if category not found/invalid.
+        """
 
         category_id = request.GET['category_id']
 
@@ -869,12 +1316,23 @@ class LikeCategoryView(View):
         return HttpResponse(category.points)
 
 class DislikeCategoryView(View):
+    """
+    Decrease the points of a category via an AJAX request.
 
+    Used for user interaction to "dislike" a category.
     """
-    Decrease the 'point' for a category via an AJAX GET request.
-    """
+
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Decrease the category's points and return the new count.
+
+        Args:
+            request: The HTTP request object with GET parameter 'category_id'.
+
+        Returns:
+            HttpResponse: New points value or -1 if category not found/invalid.
+        """
 
         category_id = request.GET['category_id']
 
@@ -897,13 +1355,23 @@ class DislikeCategoryView(View):
         return HttpResponse(category.points)
 
 class ShowArticleView(View):
-
     """
-    Display a single article along with its comments.
-    Increments the article's view count and prepares a comment form.
+    Display an article with its comments and a form to add new comments.
+
+    Increments the article's view count each time it is accessed.
     """
 
     def create_context_dict(self, category_name_slug, article_title_slug):
+        """
+        Build the context dictionary for the article page.
+
+        Args:
+            category_name_slug (str): The slug of the article's category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            dict: Context with article, category, and comments or None if not found.
+        """
 
         context_dict = {}
 
@@ -942,16 +1410,40 @@ class ShowArticleView(View):
         return context_dict
 
     def get(self, request, category_name_slug, article_title_slug):
-        
+        """
+        Render the article page with comments and a comment form.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            HttpResponse: Rendered article.html with article details.
+        """
+
         context_dict = self.create_context_dict(category_name_slug, article_title_slug)
-        # Add an empty comment form to the context
+        
         context_dict['form'] = CommentForm()
         
         return render(request, 'main/article.html', context_dict)
 
     @method_decorator(login_required)
     def post(self, request, category_name_slug, article_title_slug):
-        
+        """
+        Process a new comment submission for the article.
+
+        Checks for banned words and updates the article's timestamp on success.
+
+        Args:
+            request: The HTTP request object with POST data.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            HttpResponse: Redirect to article page or re-render with form errors.
+        """
+
         context_dict = self.create_context_dict(category_name_slug, article_title_slug)
 
         form = CommentForm(request.POST)
@@ -959,8 +1451,8 @@ class ShowArticleView(View):
         if form.is_valid():
 
             content = form.cleaned_data['content']
-            # Check for banned words in the comment
-
+            
+            # Check for banned words in the comment's content
             if any(word in content.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
@@ -978,7 +1470,7 @@ class ShowArticleView(View):
                 comment.author = request.user
             
                 comment.save()
-                # Update the article's updated timestamp
+                
                 article = context_dict.get('article')
 
                 if article:
@@ -996,13 +1488,22 @@ class ShowArticleView(View):
         return render(request, 'main/article.html', context_dict)
 
 class AddArticleView(View):
-
     """
-    Allow a logged-in user to add a new article to a given category.
-    Also supports an external search query for related content.
+    Allow logged-in users to create a new article in a specified category.
+
+    Supports an external Bing search query to assist with content creation.
     """
 
     def get_category_name(self, category_name_slug):
+        """
+        Fetch the category by its slug.
+
+        Args:
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            Category: The category object or None if not found.
+        """
 
         try:
 
@@ -1016,6 +1517,16 @@ class AddArticleView(View):
     
     @method_decorator(login_required)
     def get(self, request, category_name_slug):
+        """
+        Render the add article form with optional search results.
+
+        Args:
+            request: The HTTP request object with optional 'query' GET parameter.
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            HttpResponse: Rendered add_article.html with form and search results.
+        """
 
         form = ArticleForm()
         
@@ -1035,6 +1546,18 @@ class AddArticleView(View):
     
     @method_decorator(login_required)
     def post(self, request, category_name_slug):
+        """
+        Process the article form submission and save the new article.
+
+        Checks for banned words in title, summary, and content.
+
+        Args:
+            request: The HTTP request object with POST data.
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            HttpResponse: Redirect to article page on success or re-render form.
+        """
         
         form = ArticleForm(request.POST, request.FILES)
         
@@ -1048,7 +1571,7 @@ class AddArticleView(View):
 
             content = form.cleaned_data['content']
 
-            #Check for banned words in title, summary, and content.
+            # Check for banned words in the article's title, summary, and content.
             if any(word in title.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
@@ -1105,13 +1628,22 @@ class AddArticleView(View):
 
 @method_decorator(login_required, name='dispatch')
 class EditArticleView(View):
-
     """
-    Allow an article's author to edit the article.
-    Validates form data and checks for banned words before saving changes.
+    Allow the article's author to edit its details.
+
+    Ensures only the author can edit and checks for banned words in updated content.
     """
 
     def get_category(self, category_name_slug):
+        """
+        Fetch the category by its slug.
+
+        Args:
+            category_name_slug (str): The slug of the category.
+
+        Returns:
+            Category: The category object or None if not found.
+        """
 
         try:
 
@@ -1122,6 +1654,15 @@ class EditArticleView(View):
             return None
 
     def get_article(self, article_title_slug):
+        """
+        Fetch the article by its slug.
+
+        Args:
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            Article: The article object or None if not found.
+        """
         
         try:
         
@@ -1132,10 +1673,30 @@ class EditArticleView(View):
             return None
 
     def create_context_dict(self, article):
+        """
+        Build the context dictionary for the edit form.
+
+        Args:
+            article: The Article object to edit.
+
+        Returns:
+            dict: Context with article and form data.
+        """
         
         return {'article': article, 'form': ArticleForm(instance=article)}
 
     def get(self, request, category_name_slug, article_title_slug):
+        """
+        Render the article edit form for the author.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            HttpResponse: Rendered edit_article.html or redirect if not authorized.
+        """
 
         category = self.get_category(category_name_slug)
 
@@ -1145,7 +1706,6 @@ class EditArticleView(View):
             
             return render(request, 'main/edit_article.html', {'article': None})
 
-        # Only allow author to edit the article.
         if request.user != article.author:
 
             return redirect('main:show_article', category_name_slug=category_name_slug, article_title_slug=article_title_slug)
@@ -1155,6 +1715,17 @@ class EditArticleView(View):
         return render(request, 'main/edit_article.html', context_dict)
 
     def post(self, request, category_name_slug, article_title_slug):
+        """
+        Process the article edit form submission.
+
+        Args:
+            request: The HTTP request object with POST data.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            HttpResponse: Redirect to article page on success or re-render form.
+        """
 
         category = self.get_category(category_name_slug)
 
@@ -1178,7 +1749,7 @@ class EditArticleView(View):
 
             content = form.cleaned_data['content']
 
-            #Validate that none of the fields contain banned words.
+            # Check for banned words in the article's title, summary, and content.
             if any(word in title.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
@@ -1219,13 +1790,24 @@ class EditArticleView(View):
 
 @method_decorator(login_required, name='dispatch')
 class DeleteArticleView(View):
+    """
+    Allow the article's author to delete it.
 
+    Displays a confirmation page and deletes the article if confirmed.
     """
-    Allow an article's author to delete the article.
-    Displays a confirmation page and deletes the article upon confirmation.
-    """
+
     def get_article(self, category_name_slug, article_title_slug):
-        
+        """
+        Fetch the article by its category and slug.
+
+        Args:
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            Article: The article object or None if not found.
+        """
+
         try:
         
             return Article.objects.get(category__slug=category_name_slug, slug=article_title_slug)
@@ -1235,7 +1817,18 @@ class DeleteArticleView(View):
             return None
 
     def get(self, request, category_name_slug, article_title_slug):
-        
+        """
+        Render the article deletion confirmation page.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            HttpResponse: Rendered delete_article.html or redirect if not authorized.
+        """
+
         article = self.get_article(category_name_slug, article_title_slug)
 
         if article is None:
@@ -1249,7 +1842,18 @@ class DeleteArticleView(View):
         return render(request, 'main/delete_article.html', {'article': article})
 
     def post(self, request, category_name_slug, article_title_slug):
-        
+        """
+        Process the article deletion.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            HttpResponse: Redirect to category page or redirect if not authorized.
+        """
+
         article = self.get_article(category_name_slug, article_title_slug)
 
         if article is None or request.user != article.author:
@@ -1264,13 +1868,23 @@ class DeleteArticleView(View):
 
 @method_decorator(login_required, name='dispatch')
 class EditCommentView(View):
-
     """
-    Allow a comment's author to edit their comment within 24 hours of posting.
-    Checks if the comment is still editable and validates for banned words.
+    Allow a comment's author to edit it within 24 hours of posting.
+
+    Checks edit eligibility and validates content for banned words.
     """
 
     def get_article(self, category_name_slug, article_title_slug):
+        """
+        Fetch the article by its category and slug.
+
+        Args:
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            Article: The article object or None if not found.
+        """
         
         try:
         
@@ -1281,6 +1895,15 @@ class EditCommentView(View):
             return None
 
     def get_comment(self, comment_id):
+        """
+        Fetch the comment by its ID.
+
+        Args:
+            comment_id (int): The ID of the comment.
+
+        Returns:
+            Comment: The comment object or None if not found.
+        """
         
         try:
         
@@ -1291,24 +1914,56 @@ class EditCommentView(View):
             return None
 
     def is_editable(self, comment):
-        # Allow editing if the comment is less than 24 hours old.
+        """
+        Check if the comment can be edited (within 24 hours of posting).
+
+        Args:
+            comment: The Comment object to check.
+
+        Returns:
+            bool: True if editable, False otherwise.
+        """
+
         return (timezone.now() - comment.written_on) < timedelta(hours=24)
 
     def create_context_dict(self, article, comment, can_edit):
+        """
+        Build the context dictionary for the edit form.
+
+        Args:
+            article: The Article object associated with the comment.
+            comment: The Comment object to edit.
+            can_edit (bool): Whether the comment is editable.
+
+        Returns:
+            dict: Context with article, comment, and form data.
+        """
         
         return {'article': article, 'comment': comment, 'can_edit': can_edit, 'form': CommentForm(instance=comment)}
 
     def get(self, request, category_name_slug, article_title_slug, comment_id):
-        
+        """
+        Render the comment edit form for the author.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+            comment_id (int): The ID of the comment.
+
+        Returns:
+            HttpResponse: Rendered edit_comment.html or redirect if not authorized.
+        """
+
         article = self.get_article(category_name_slug, article_title_slug)
         
         comment = self.get_comment(comment_id)
 
-        can_edit = self.is_editable(comment)
-
         if article is None or comment is None:
         
             return render(request, 'main/edit_comment.html', {'comment': None})
+
+        can_edit = self.is_editable(comment)
 
         if request.user != comment.author:
         
@@ -1319,16 +1974,28 @@ class EditCommentView(View):
         return render(request, 'main/edit_comment.html', context_dict)
 
     def post(self, request, category_name_slug, article_title_slug, comment_id):
-        
+        """
+        Process the comment edit form submission.
+
+        Args:
+            request: The HTTP request object with POST data.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+            comment_id (int): The ID of the comment.
+
+        Returns:
+            HttpResponse: Redirect to article page on success or re-render form.
+        """
+
         article = self.get_article(category_name_slug, article_title_slug)
         
         comment = self.get_comment(comment_id)
 
-        can_edit = self.is_editable(comment)
-
         if article is None or comment is None:
         
             return render(request, 'main/edit_comment.html', {'comment': None})
+
+        can_edit = self.is_editable(comment)
 
         if request.user != comment.author:
         
@@ -1339,7 +2006,8 @@ class EditCommentView(View):
         if form.is_valid():
 
             content = form.cleaned_data['content']
-            # Check for banned words in the comment.
+            
+            # Check for banned words in the comment's content.
             if any(word in content.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
@@ -1368,14 +2036,24 @@ class EditCommentView(View):
 
 @method_decorator(login_required, name='dispatch')
 class DeleteCommentView(View):
-
     """
-    Allow a comment's author to delete their comment within 24 hours of posting.
-    Displays a confirmation page before deletion
+    Allow a comment's author to delete it within 24 hours of posting.
+
+    Displays a confirmation page and deletes the comment if confirmed.
     """
 
     def get_article(self, category_name_slug, article_title_slug):
-        
+        """
+        Fetch the article by its category and slug.
+
+        Args:
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+
+        Returns:
+            Article: The article object or None if not found.
+        """
+
         try:
         
             return Article.objects.get(category__slug=category_name_slug, slug=article_title_slug)
@@ -1385,7 +2063,16 @@ class DeleteCommentView(View):
             return None
 
     def get_comment(self, comment_id):
-        
+        """
+        Fetch the comment by its ID.
+
+        Args:
+            comment_id (int): The ID of the comment.
+
+        Returns:
+            Comment: The comment object or None if not found.
+        """
+
         try:
         
             return Comment.objects.get(id=comment_id)
@@ -1395,24 +2082,56 @@ class DeleteCommentView(View):
             return None
 
     def is_deletable(self, comment):
-        # Allow deletion if the comment is less than 24 hours old.
+        """
+        Check if the comment can be deleted (within 24 hours of posting).
+
+        Args:
+            comment: The Comment object to check.
+
+        Returns:
+            bool: True if deletable, False otherwise.
+        """
+
         return (timezone.now() - comment.written_on) < timedelta(hours=24)
 
     def create_context_dict(self, article, comment, can_delete):
+        """
+        Build the context dictionary for the delete confirmation page.
+
+        Args:
+            article: The Article object associated with the comment.
+            comment: The Comment object to delete.
+            can_delete (bool): Whether the comment is deletable.
+
+        Returns:
+            dict: Context with article and comment data.
+        """
 
         return {'article': article, 'comment': comment, 'can_delete': can_delete}
 
     def get(self, request, category_name_slug, article_title_slug, comment_id):
-        
+        """
+        Render the comment deletion confirmation page.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+            comment_id (int): The ID of the comment.
+
+        Returns:
+            HttpResponse: Rendered delete_comment.html or redirect if not authorized.
+        """
+
         article = self.get_article(category_name_slug, article_title_slug)
 
         comment = self.get_comment(comment_id)
 
-        can_delete = self.is_deletable(comment)
-
         if article is None or comment is None:
         
             return render(request, 'main/delete_comment.html', {'comment': None})
+
+        can_delete = self.is_deletable(comment)
 
         if request.user != comment.author:
         
@@ -1423,7 +2142,19 @@ class DeleteCommentView(View):
         return render(request, 'main/delete_comment.html', context_dict)
 
     def post(self, request, category_name_slug, article_title_slug, comment_id):
-        
+        """
+        Process the comment deletion.
+
+        Args:
+            request: The HTTP request object.
+            category_name_slug (str): The slug of the category.
+            article_title_slug (str): The slug of the article.
+            comment_id (int): The ID of the comment.
+
+        Returns:
+            HttpResponse: Redirect to article page or re-render if not found/authorized.
+        """
+
         article = self.get_article(category_name_slug, article_title_slug)
 
         comment = self.get_comment(comment_id)
@@ -1448,11 +2179,22 @@ class DeleteCommentView(View):
 
 class LikeArticleView(View):
     """
-    Increase the points of an article via an AJAX GET request.
+    Increment the points of an article via an AJAX request.
+
+    Used for user interaction to "like" an article.
     """
 
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Increase the article's points and return the new count.
+
+        Args:
+            request: The HTTP request object with GET parameter 'article_id'.
+
+        Returns:
+            HttpResponse: New points value or -1 if article not found/invalid.
+        """
 
         article_id = request.GET['article_id']
 
@@ -1475,13 +2217,23 @@ class LikeArticleView(View):
         return HttpResponse(article.points)
 
 class DislikeArticleView(View):
-
     """
-    Decrease the points of an article via an AJAX GET request.
+    Decrease the points of an article via an AJAX request.
+
+    Used for user interaction to "dislike" an article.
     """
 
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Decrease the article's points and return the new count.
+
+        Args:
+            request: The HTTP request object with GET parameter 'article_id'.
+
+        Returns:
+            HttpResponse: New points value or -1 if article not found/invalid.
+        """
 
         article_id = request.GET['article_id']
 
@@ -1505,10 +2257,17 @@ class DislikeArticleView(View):
 
 @login_required
 def favourite_article(request, article_title_slug):
-
     """
     Toggle the favourite status of an article for the current user.
-    If the article is already favourited, it is removed; otherwise, it is added.
+
+    Adds or removes the article from the user's favourites list.
+
+    Args:
+        request: The HTTP request object.
+        article_title_slug (str): The slug of the article to favourite/unfavourite.
+
+    Returns:
+        HttpResponse: Redirect to the article page.
     """
 
     article = get_object_or_404(Article, slug=article_title_slug)
@@ -1526,12 +2285,20 @@ def favourite_article(request, article_title_slug):
     return redirect('main:show_article', category_name_slug=article.category.slug, article_title_slug=article.slug)
 
 class ForumListView(View):
-
     """
-    Display a list of all forums.
+    Display a list of all forums available on the platform.
     """
 
     def get(self, request):
+        """
+        Render the forum list page.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered forum_list.html with all forums.
+        """
 
         context_dict = {}
 
@@ -1542,13 +2309,24 @@ class ForumListView(View):
         return render(request, 'main/forum_list.html', context_dict)
     
 class AddForumView(View):
-
     """
-    Allow staff users to add a new forum
+    Allow staff users to create a new forum.
+
+    GET: Displays an empty forum form.
+    POST: Processes the form and saves the new forum.
     """
 
     @method_decorator(login_required)
     def get(self, request):
+        """
+        Render the add forum form for staff users.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            HttpResponse: Rendered add_forum.html or redirect if not staff.
+        """
         
         if not request.user.is_staff:
 
@@ -1560,7 +2338,16 @@ class AddForumView(View):
     
     @method_decorator(login_required)
     def post(self, request):
-        
+        """
+        Process the forum form submission and save the new forum.
+
+        Args:
+            request: The HTTP request object with POST data.
+
+        Returns:
+            HttpResponse: Redirect to index on success or re-render form with errors.
+        """
+
         if not request.user.is_staff:
 
             return redirect(reverse('main:index'))
@@ -1575,18 +2362,28 @@ class AddForumView(View):
         
         else:
 
-            print(form.errors)
+            print(form.errors) # Log errors for debugging
         
         return render(request, 'main/add_forum.html', {'form': form})
 
 @method_decorator(login_required, name='dispatch')
 class EditForumView(View):
-
     """
     Allow staff users to edit an existing forum.
+
+    Retrieves the forum by slug, provides a pre-filled form, and saves changes.
     """
 
     def get_forum(self, forum_name_slug):
+        """
+        Fetch the forum by its slug.
+
+        Args:
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            Forum: The forum object or None if not found.
+        """
 
         try:
 
@@ -1597,10 +2394,29 @@ class EditForumView(View):
             return None
 
     def create_context_dict(self, forum):
+        """
+        Build the context dictionary for the edit form.
+
+        Args:
+            forum: The Forum object to edit.
+
+        Returns:
+            dict: Context with forum and form data.
+        """
         
         return {'forum': forum, 'form': ForumForm(instance=forum)}
 
     def get(self, request, forum_name_slug):
+        """
+        Render the forum edit form for staff users.
+
+        Args:
+            request: The HTTP request object.
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            HttpResponse: Rendered edit_forum.html or redirect if not staff.
+        """
         
         if not request.user.is_staff:
 
@@ -1613,6 +2429,16 @@ class EditForumView(View):
         return render(request, 'main/edit_forum.html', context_dict)
 
     def post(self, request, forum_name_slug):
+        """
+        Process the forum edit form submission.
+
+        Args:
+            request: The HTTP request object with POST data.
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            HttpResponse: Redirect to thread list on success or re-render form.
+        """
 
         if not request.user.is_staff:
 
@@ -1636,12 +2462,22 @@ class EditForumView(View):
 
 @method_decorator(login_required, name='dispatch')
 class DeleteForumView(View):
-
     """
     Allow staff users to delete an existing forum.
+
+    Displays a confirmation page and deletes the forum if confirmed.
     """
 
     def get_forum(self, forum_name_slug):
+        """
+        Fetch the forum by its slug.
+
+        Args:
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            Forum: The forum object or None if not found.
+        """
         
         try:
         
@@ -1652,6 +2488,16 @@ class DeleteForumView(View):
             return None
 
     def get(self, request, forum_name_slug):
+        """
+        Render the forum deletion confirmation page.
+
+        Args:
+            request: The HTTP request object.
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            HttpResponse: Rendered delete_forum.html or redirect if not staff.
+        """
 
         if not request.user.is_staff:
 
@@ -1666,6 +2512,16 @@ class DeleteForumView(View):
         return render(request, 'main/delete_forum.html', {'forum': forum})
 
     def post(self, request, forum_name_slug):
+        """
+        Process the forum deletion.
+
+        Args:
+            request: The HTTP request object.
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            HttpResponse: Redirect to forum list on success or re-render if not found.
+        """
 
         if not request.user.is_staff:
 
@@ -1682,12 +2538,20 @@ class DeleteForumView(View):
         return redirect('main:forum_list')
 
 class ThreadListView(View):
-
     """
-    Display a list of threads for a given forum.
+    Display a list of threads within a specific forum.
     """
 
     def create_context_dict(self, forum_name_slug):
+        """
+        Build the context dictionary for the thread list page.
+
+        Args:
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            dict: Context with forum and thread data or None if not found.
+        """
         
         context_dict = {}
 
@@ -1695,7 +2559,7 @@ class ThreadListView(View):
 
             forum = Forum.objects.get(slug=forum_name_slug)
 
-            threads = Thread.objects.filter(forum=forum)
+            threads = Thread.objects.filter(forum=forum).annotate(post_count=Count('post'))
 
             context_dict['threads'] = threads
 
@@ -1710,6 +2574,16 @@ class ThreadListView(View):
         return context_dict
 
     def get(self, request, forum_name_slug):
+        """
+        Render the thread list page for the specified forum.
+
+        Args:
+            request: The HTTP request object.
+            forum_name_slug (str): The slug of the forum.
+
+        Returns:
+            HttpResponse: Rendered thread_list.html with thread data.
+        """
 
         context_dict = self.create_context_dict(forum_name_slug)
 
@@ -1717,13 +2591,23 @@ class ThreadListView(View):
 
 @method_decorator(login_required, name='dispatch')
 class ThreadDetailView(View):
-
     """
-    Display the details of a thread, including its posts and any attached poll.
-    Also provides a form for adding new posts and, if applicable, shows poll options.
+    Display details of a thread, including its posts and optional poll.
+
+    Provides a form to add new posts and displays poll options if present.
     """
 
     def create_context_dict(self, forum_name_slug, thread_title_slug):
+        """
+        Build the context dictionary for the thread detail page.
+
+        Args:
+            forum_name_slug (str): The slug of the forum.
+            thread_title_slug (str): The slug of the thread.
+
+        Returns:
+            dict: Context with forum, thread, posts, and poll data or None if not found.
+        """
 
         context_dict = {}
 
@@ -1770,9 +2654,20 @@ class ThreadDetailView(View):
         return context_dict
 
     def get(self, request, forum_name_slug, thread_title_slug):
+        """
+        Render the thread detail page with posts and a post form.
+
+        Args:
+            request: The HTTP request object with optional 'query' GET parameter.
+            forum_name_slug (str): The slug of the forum.
+            thread_title_slug (str): The slug of the thread.
+
+        Returns:
+            HttpResponse: Rendered thread_detail.html with thread details.
+        """
 
         context_dict = self.create_context_dict(forum_name_slug, thread_title_slug)
-        # Flag to indicate if the thread was not found.
+
         if context_dict['thread'] is None:
 
             context_dict['thread_not_found'] = True
@@ -1804,7 +2699,20 @@ class ThreadDetailView(View):
         return render(request, "main/thread_detail.html", context_dict)
 
     def post(self, request, forum_name_slug, thread_title_slug):
-        
+        """
+        Process a new post submission for the thread.
+
+        Checks for banned words and updates the thread's timestamp on success.
+
+        Args:
+            request: The HTTP request object with POST data.
+            forum_name_slug (str): The slug of the forum.
+            thread_title_slug (str): The slug of the thread.
+
+        Returns:
+            HttpResponse: Redirect to thread page on success or re-render form.
+        """
+
         context_dict = self.create_context_dict(forum_name_slug, thread_title_slug)
 
         form = PostForm(request.POST)
@@ -1820,7 +2728,8 @@ class ThreadDetailView(View):
         if form.is_valid():
 
             content = form.cleaned_data['content']
-            # Check for banned words in the post content.
+            
+            # Check for banned words in the post's content.
             if any(word in content.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
@@ -1856,13 +2765,24 @@ class ThreadDetailView(View):
         return render(request, "main/thread_detail.html", context_dict)
 
 class CreateThreadView(View):
-
     """
-    Allow a logged-in user to create a new thread in a given forum.
-    Supports an external query search to help generate thread content.
+    Enable logged-in users to create a new thread within a specified forum.
+
+    This view supports both creating a thread from scratch and assisting users with content generation
+    by integrating an external Bing search query. It ensures that only authenticated users can access
+    this functionality and validates thread content against a list of banned words before saving.
     """
 
     def get_forum_name(self, forum_name_slug):
+        """
+        Retrieve the forum object based on its slug identifier.
+
+        Args:
+            forum_name_slug (str): The unique slug of the forum to fetch.
+
+        Returns:
+            Forum or None: The Forum object if found, otherwise None if the forum does not exist.
+        """
 
         try:
 
@@ -1876,6 +2796,20 @@ class CreateThreadView(View):
 
     @method_decorator(login_required)
     def get(self, request, forum_name_slug):
+        """
+        Display the thread creation form with optional search results to assist content creation.
+
+        Fetches the forum by its slug, initializes an empty thread form, and optionally includes
+        search results if a query parameter is provided. This allows users to reference external
+        content while drafting their thread.
+
+        Args:
+            request: The HTTP request object containing user session and GET parameters.
+            forum_name_slug (str): The slug of the forum where the thread will be created.
+
+        Returns:
+            HttpResponse: Rendered create_thread.html template with the form and optional search data.
+        """
 
         forum = self.get_forum_name(forum_name_slug)
 
@@ -1895,6 +2829,20 @@ class CreateThreadView(View):
 
     @method_decorator(login_required)
     def post(self, request, forum_name_slug):
+        """
+        Process the thread creation form submission and save the new thread.
+
+        Validates the form data, checks the title and topic for banned words, associates the thread
+        with the current user and forum, and redirects to the thread detail page on success. If
+        validation fails or banned words are detected, it re-renders the form with error messages.
+
+        Args:
+            request: The HTTP request object containing POST data and user session.
+            forum_name_slug (str): The slug of the forum where the thread will be created.
+
+        Returns:
+            HttpResponse: Redirect to thread detail page on success, or re-rendered form on failure.
+        """
 
         forum = self.get_forum_name(forum_name_slug)
 
@@ -1915,7 +2863,8 @@ class CreateThreadView(View):
             title = form.cleaned_data['title']
 
             topic = form.cleaned_data['topic']
-            # Validate that title and topic do not contain banned words.
+
+            # Check for banned words in the threads's title and topic
             if any(word in title.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
@@ -1950,13 +2899,24 @@ class CreateThreadView(View):
 
 @method_decorator(login_required, name='dispatch')
 class EditThreadView(View):
-
     """
-    Allow the author of a thread to edit it.
-    Validates that the current user is the author and checks for banned words.
+    Allow the original author of a thread to edit its details.
+
+    Ensures that only the thread's author can make changes, provides a pre-filled form with existing
+    data, and validates updated content against banned words. Redirects unauthorized users to the
+    thread detail page.
     """
 
     def get_forum(self, forum_name_slug):
+        """
+        Retrieve the forum object using its slug.
+
+        Args:
+            forum_name_slug (str): The slug of the forum to fetch.
+
+        Returns:
+            Forum or None: The Forum object if found, otherwise None if the forum does not exist.
+        """
 
         try:
 
@@ -1967,6 +2927,15 @@ class EditThreadView(View):
             return None
 
     def get_thread(self, thread_title_slug):
+        """
+        Retrieve the thread object using its slug.
+
+        Args:
+            thread_title_slug (str): The slug of the thread to fetch.
+
+        Returns:
+            Thread or None: The Thread object if found, otherwise None if the thread does not exist.
+        """
         
         try:
         
@@ -1977,10 +2946,33 @@ class EditThreadView(View):
             return None
 
     def create_context_dict(self, thread):
+        """
+        Build the context dictionary for the thread edit form.
+
+        Args:
+            thread: The Thread object being edited.
+
+        Returns:
+            dict: A dictionary containing the thread and a pre-filled form instance.
+        """
         
         return {'thread': thread, 'form': ThreadForm(instance=thread)}
 
     def get(self, request, forum_name_slug, thread_title_slug):
+        """
+        Display the thread edit form for the thread's author.
+
+        Fetches the forum and thread, checks if the current user is the author, and renders the edit
+        form with existing thread data. Redirects non-authors to the thread detail page.
+
+        Args:
+            request: The HTTP request object containing user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread to edit.
+
+        Returns:
+            HttpResponse: Rendered edit_thread.html template or redirect if unauthorized.
+        """
 
         forum = self.get_forum(forum_name_slug)
 
@@ -1999,6 +2991,21 @@ class EditThreadView(View):
         return render(request, 'main/edit_thread.html', context_dict)
 
     def post(self, request, forum_name_slug, thread_title_slug):
+        """
+        Process the thread edit form submission and save changes.
+
+        Validates the updated form data, checks for banned words in the title and topic, and saves
+        the changes if valid. Redirects to the thread detail page on success or re-renders the form
+        with errors if validation fails.
+
+        Args:
+            request: The HTTP request object containing POST data and user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread to edit.
+
+        Returns:
+            HttpResponse: Redirect to thread detail page on success, or re-rendered form on failure.
+        """
 
         forum = self.get_forum(forum_name_slug)
 
@@ -2020,7 +3027,7 @@ class EditThreadView(View):
 
             topic = form.cleaned_data['topic']
 
-            # Check for banned words in title and topic
+            # Check for banned words in the thread's title and topic
             if any(word in title.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
@@ -2053,14 +3060,25 @@ class EditThreadView(View):
 
 @method_decorator(login_required, name='dispatch')
 class DeleteThreadView(View):
-
     """
-    Allow the author of a thread to delete it.
-    Displays a confirmation page and deletes the thread if confirmed.
+    Allow the author of a thread to delete it entirely.
+
+    Presents a confirmation page to the thread’s author and, upon confirmation, deletes the thread
+    along with its associated posts and poll (if any). Only the author can perform this action.
     """
 
     def get_thread(self, forum_name_slug, thread_title_slug):
-        
+        """
+        Retrieve the thread object based on its forum slug and thread slug.
+
+        Args:
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread to fetch.
+
+        Returns:
+            Thread or None: The Thread object if found, otherwise None if the thread does not exist.
+        """
+
         try:
         
             return Thread.objects.get(forum__slug=forum_name_slug, slug=thread_title_slug)
@@ -2070,6 +3088,20 @@ class DeleteThreadView(View):
             return None
 
     def get(self, request, forum_name_slug, thread_title_slug):
+        """
+        Display the thread deletion confirmation page.
+
+        Fetches the thread and checks if the current user is the author. If authorized, it renders
+        a confirmation page; otherwise, it redirects to the thread detail page.
+
+        Args:
+            request: The HTTP request object containing user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread to delete.
+
+        Returns:
+            HttpResponse: Rendered delete_thread.html template or redirect if unauthorized.
+        """
         
         thread = self.get_thread(forum_name_slug, thread_title_slug)
         
@@ -2084,6 +3116,20 @@ class DeleteThreadView(View):
         return render(request, 'main/delete_thread.html', {'thread': thread})
 
     def post(self, request, forum_name_slug, thread_title_slug):
+        """
+        Process the thread deletion upon user confirmation.
+
+        Deletes the thread if the current user is the author and redirects to the forum’s thread list.
+        If the thread is not found or the user is not authorized, it redirects to the thread detail page.
+
+        Args:
+            request: The HTTP request object containing user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread to delete.
+
+        Returns:
+            HttpResponse: Redirect to thread list on success, or thread detail page if unauthorized.
+        """
         
         thread = self.get_thread(forum_name_slug, thread_title_slug)
 
@@ -2099,13 +3145,24 @@ class DeleteThreadView(View):
 
 @method_decorator(login_required, name='dispatch')
 class EditPostView(View):
-
     """
-    Allow the author of a post to edit it within 24 hours.
-    Checks that the post is editable, validates changes, and checks for banned words.
+    Allow the author of a post to edit its content within 24 hours of creation.
+
+    Ensures that only the post’s author can edit it, enforces a 24-hour edit window, and validates
+    the updated content against banned words. Updates the thread’s timestamp upon successful edit.
     """
 
     def get_thread(self, forum_name_slug, thread_title_slug):
+        """
+        Retrieve the thread object based on its forum slug and thread slug.
+
+        Args:
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread containing the post.
+
+        Returns:
+            Thread or None: The Thread object if found, otherwise None if the thread does not exist.
+        """
         
         try:
         
@@ -2116,6 +3173,15 @@ class EditPostView(View):
             return None
 
     def get_post(self, post_id):
+        """
+        Retrieve the post object based on its unique identifier.
+
+        Args:
+            post_id (int): The primary key of the post to fetch.
+
+        Returns:
+            Post or None: The Post object if found, otherwise None if the post does not exist.
+        """
         
         try:
         
@@ -2126,79 +3192,116 @@ class EditPostView(View):
             return None
 
     def is_editable(self, post):
-        # A post is editable if it was written within the last 24 hours.
+        """
+        Determine if the post is still within the 24-hour editable period.
+
+        Args:
+            post: The Post object to check.
+
+        Returns:
+            bool: True if the post was created less than 24 hours ago, False otherwise.
+        """
+
         return (timezone.now() - post.written_on) < timedelta(hours=24)
 
     def create_context_dict(self, thread, post, can_edit):
+        """
+        Build the context dictionary for the post edit form.
+
+        Args:
+            thread: The Thread object containing the post.
+            post: The Post object being edited.
+            can_edit (bool): Indicates whether the post is within the editable time window.
+
+        Returns:
+            dict: A dictionary containing the thread, post, edit status, and pre-filled form.
+        """
         
         return {'thread': thread, 'post': post, 'can_edit': can_edit, 'form': PostForm(instance=post)}
 
     def get(self, request, forum_name_slug, thread_title_slug, post_id):
+        """
+        Display the post edit form for the post’s author.
 
-        # Handle GET requests to display the edit post form. Retrieves thread and post objects
+        Fetches the thread and post, checks if the user is the author and if the post is editable,
+        then renders the edit form. Redirects unauthorized users to the thread detail page.
 
-        #Retrieve the thread and post based on URL slugs and post_id
+        Args:
+            request: The HTTP request object containing user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread containing the post.
+            post_id (int): The ID of the post to edit.
+
+        Returns:
+            HttpResponse: Rendered edit_post.html template or redirect if unauthorized.
+        """
+
         thread = self.get_thread(forum_name_slug, thread_title_slug)
 
         post = self.get_post(post_id)
-
-        # Determine if the post is editable
-        can_edit = self.is_editable(post)
 
         if thread is None or post is None:
         
             return render(request, 'main/edit_post.html', {'post': None})
 
-        # Ensure that only the author can edit the post
+        can_edit = self.is_editable(post)
+
         if request.user != post.author:
         
             return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
 
-        # Build the context with the thread, post, edit flag, and the pre-populated form
         context_dict = self.create_context_dict(thread, post, can_edit)
         
         return render(request, 'main/edit_post.html', context_dict)
 
     def post(self, request, forum_name_slug, thread_title_slug, post_id):
+        """
+        Process the post edit form submission and save changes.
 
-        #Handle POST requests to process the edited post submission
+        Validates the updated content, checks for banned words, and updates the post and thread
+        timestamp if successful. Redirects to the thread detail page on success or re-renders the
+        form with errors if validation fails.
 
-        # Retrieve the thread and post objects
+        Args:
+            request: The HTTP request object containing POST data and user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread containing the post.
+            post_id (int): The ID of the post to edit.
+
+        Returns:
+            HttpResponse: Redirect to thread detail page on success, or re-rendered form on failure.
+        """
+
         thread = self.get_thread(forum_name_slug, thread_title_slug)
         
         post = self.get_post(post_id)
 
-        # Determine if the post is still editable
-        can_edit = self.is_editable(post)
-
-        # OIf the thread or post doesn't exist, render the template with 'post': None.
         if thread is None or post is None:
         
             return render(request, 'main/edit_post.html', {'post': None})
 
-        # Only allow the post's author to edit the post
+        can_edit = self.is_editable(post)
+
         if request.user != post.author:
         
             return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
 
-        # Create a form instance with the submitted POST data, pre-populated with the existing post
         form = PostForm(request.POST, instance=post)
 
         if form.is_valid():
-            # Extract the updated content from the form
             content = form.cleaned_data['content']
 
-            # Check if the updated content contains any banned words
+            # Check for banned words in the post's content
             if any(word in content.lower() for word in BANNED_WORDS):
 
                 storage = messages.get_messages(request)
                 
-                storage.used = True # Mark messages as used so they don't duplicate
+                storage.used = True
 
                 messages.error(request, "Your post contains inappropriate content and was not edited.", extra_tags="danger")
         
             else:
-                # Save the updated post and update the thread's 'updated_on' timestamp
+
                 form.save()
 
                 thread.updated_on = timezone.now()
@@ -2209,7 +3312,6 @@ class EditPostView(View):
 
                 return redirect("main:thread_detail", forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
 
-        # If the form is invalid  or there was an error, rebuild the context and re-render the form
         context_dict = self.create_context_dict(thread, post, can_edit)
 
         context_dict['form'] = form
@@ -2218,14 +3320,25 @@ class EditPostView(View):
 
 @method_decorator(login_required, name='dispatch')
 class DeletePostView(View):
-
     """
-    Allow the author of a post to delete it if it was written within 24 hrs.
-    Displays a confirmation page and deletes the post upon confirmation.
+    Allow the author of a post to delete it within 24 hours of creation.
+
+    Presents a confirmation page to the post’s author and deletes the post if confirmed, updating
+    the thread’s timestamp. Only the author can perform this action within the time limit.
     """
 
     def get_thread(self, forum_name_slug, thread_title_slug):
-        # Retrieve the thread based on forum and thread slugs
+        """
+        Retrieve the thread object based on its forum slug and thread slug.
+
+        Args:
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread containing the post.
+
+        Returns:
+            Thread or None: The Thread object if found, otherwise None if the thread does not exist.
+        """
+
         try:
         
             return Thread.objects.get(forum__slug=forum_name_slug, slug=thread_title_slug)
@@ -2235,7 +3348,16 @@ class DeletePostView(View):
             return None
 
     def get_post(self, post_id):
-        # Retrieve the post by its primary key
+        """
+        Retrieve the post object based on its unique identifier.
+
+        Args:
+            post_id (int): The primary key of the post to fetch.
+
+        Returns:
+            Post or None: The Post object if found, otherwise None if the post does not exist.
+        """
+
         try:
         
             return Post.objects.get(id=post_id)
@@ -2245,53 +3367,97 @@ class DeletePostView(View):
             return None
 
     def is_deletable(self, post):
-        # Check if post is eligible for deletion i.e. created within 24 hours
+        """
+        Determine if the post is still within the 24-hour deletable period.
+
+        Args:
+            post: The Post object to check.
+
+        Returns:
+            bool: True if the post was created less than 24 hours ago, False otherwise.
+        """
+
         return (timezone.now() - post.written_on) < timedelta(hours=24)
 
     def create_context_dict(self, thread, post, can_delete):
+        """
+        Build the context dictionary for the post deletion confirmation page.
+
+        Args:
+            thread: The Thread object containing the post.
+            post: The Post object to delete.
+            can_delete (bool): Indicates whether the post is within the deletable time window.
+
+        Returns:
+            dict: A dictionary containing the thread, post, and delete status.
+        """
 
         return {'thread': thread, 'post': post, 'can_delete': can_delete}
 
     def get(self, request, forum_name_slug, thread_title_slug, post_id):
-        # Handle GET request: display a confirmation page for deleting a post.
+        """
+        Display the post deletion confirmation page.
+
+        Fetches the thread and post, checks if the user is the author and if the post is deletable,
+        then renders the confirmation page. Redirects unauthorized users to the thread detail page.
+
+        Args:
+            request: The HTTP request object containing user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread containing the post.
+            post_id (int): The ID of the post to delete.
+
+        Returns:
+            HttpResponse: Rendered delete_post.html template or redirect if unauthorized.
+        """
+
         thread = self.get_thread(forum_name_slug, thread_title_slug)
 
         post = self.get_post(post_id)
 
-        can_delete = self.is_deletable(post)
-
-        #If the thread or post is not found, render the template with no post.
         if thread is None or post is None:
         
             return render(request, 'main/delete_post.html', {'post': None})
 
-        #Only the author can delete their post
+        can_delete = self.is_deletable(post)
+
         if request.user != post.author:
         
             return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
 
-        # Prepare the context with required details.
         context_dict = self.create_context_dict(thread, post, can_delete)
 
         return render(request, 'main/delete_post.html', context_dict)
 
     def post(self, request, forum_name_slug, thread_title_slug, post_id):
-        # Handle POST request: process deletion of the post.
+        """
+        Process the post deletion upon user confirmation.
+
+        Deletes the post if the user is the author and updates the thread timestamp. Redirects to
+        the thread detail page on success or if unauthorized.
+
+        Args:
+            request: The HTTP request object containing user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread containing the post.
+            post_id (int): The ID of the post to delete.
+
+        Returns:
+            HttpResponse: Redirect to thread detail page on success or if unauthorized.
+        """
+
         thread = self.get_thread(forum_name_slug, thread_title_slug)
 
         post = self.get_post(post_id)
 
-        # If either the thread or the post is missing, show error state
         if thread is None or post is None:
 
             return render(request, 'main/delete_post.html', {'post': None})
 
-        # Ensure that only the author can perform deletion
         if request.user != post.author:
         
             return redirect('main:thread_detail', forum_name_slug=forum_name_slug, thread_title_slug=thread_title_slug)
 
-        # Save the thread slug to use after deletion for redirection
         thread_slug = thread.slug
         
         post.delete()
@@ -2304,18 +3470,24 @@ class DeletePostView(View):
 
 @login_required
 def save_thread(request, thread_title_slug):
-
     """
-    Toggle saving a thread to the user's profile.
-    If the thread is already saved, it is removed; otherwise, it is added.
+    Toggle the saved status of a thread in the user’s profile.
+
+    Adds the thread to the user’s saved threads if not already saved, or removes it if it is.
+    Requires the user to be logged in and redirects back to the thread detail page.
+
+    Args:
+        request: The HTTP request object containing user session.
+        thread_title_slug (str): The slug of the thread to save or unsave.
+
+    Returns:
+        HttpResponse: Redirect to the thread detail page after toggling the saved status.
     """
 
-    # Retrieve the thread or return a 404 error if not found
     thread = get_object_or_404(Thread, slug=thread_title_slug)
 
     userprofile = request.user.userprofile
 
-    #If the thread is already in the user's saved threads, remove it
     if thread in userprofile.saved_threads.all():
 
         userprofile.saved_threads.remove(thread)
@@ -2328,15 +3500,25 @@ def save_thread(request, thread_title_slug):
 
 @method_decorator(login_required, name='dispatch')
 class PollVoteView(View):
+    """
+    Handle user votes on poll options within a thread.
 
+    Validates the existence of the forum, thread, poll, and poll option, ensures the user hasn’t
+    already voted, and increments the vote count. Returns a JSON response with the updated vote
+    tally or an error message if validation fails.
     """
-    Process a vote on a poll option.
-    Validates that the forum, thread, poll, and poll option exist, and
-    that the user has not already voted for that option.
-    Returns a JSON response with the updated vote count.
-    """
+
     def get_forum(self, forum_name_slug):
-        # Retrieve forum using provided slug
+        """
+        Retrieve the forum object based on its slug.
+
+        Args:
+            forum_name_slug (str): The slug of the forum to fetch.
+
+        Returns:
+            Forum or None: The Forum object if found, otherwise None if the forum does not exist.
+        """
+
         try:
     
             return Forum.objects.get(slug=forum_name_slug)
@@ -2346,7 +3528,17 @@ class PollVoteView(View):
             return None
 
     def get_thread(self, forum, thread_title_slug):
-        # Retrieve the thread for the given forum
+        """
+        Retrieve the thread object within the specified forum.
+
+        Args:
+            forum: The Forum object containing the thread.
+            thread_title_slug (str): The slug of the thread to fetch.
+
+        Returns:
+            Thread or None: The Thread object if found, otherwise None if the thread does not exist.
+        """
+
         try:
     
             return Thread.objects.get(slug=thread_title_slug, forum=forum)
@@ -2356,7 +3548,16 @@ class PollVoteView(View):
             return None
 
     def get_poll(self, thread):
-        # Retrieve the poll attached to the thread.
+        """
+        Retrieve the poll object associated with the thread.
+
+        Args:
+            thread: The Thread object containing the poll.
+
+        Returns:
+            Poll or None: The Poll object if found, otherwise None if no poll exists.
+        """
+
         try:
     
             return Poll.objects.get(thread=thread)
@@ -2366,7 +3567,17 @@ class PollVoteView(View):
             return None
 
     def get_option(self, poll, option_id):
-        # Retrieve the specific poll option by its ID
+        """
+        Retrieve the specific poll option based on its ID.
+
+        Args:
+            poll: The Poll object containing the option.
+            option_id (int): The ID of the poll option to fetch.
+
+        Returns:
+            PollOption or None: The PollOption object if found, otherwise None if it does not exist.
+        """
+
         try:
     
             return PollOption.objects.get(id=option_id, poll=poll)
@@ -2376,11 +3587,26 @@ class PollVoteView(View):
             return None
 
     def post(self, request, forum_name_slug, thread_title_slug):
-        # Process the vote submission
+        """
+        Process a user’s vote on a poll option and return the result as JSON.
+
+        Validates the chain of forum, thread, poll, and option existence, checks if the user has
+        already voted, and updates the vote count if valid. Returns a success response with the
+        new vote count or an error response if any validation fails.
+
+        Args:
+            request: The HTTP request object containing POST data (option_id) and user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread containing the poll.
+
+        Returns:
+            JsonResponse: JSON object with status and either vote count or error message.
+        """
+
         forum = self.get_forum(forum_name_slug)
     
         if not forum:
-            # Return error JSON if the forum doesn't exist
+
             return JsonResponse({'status': 'error', 'message': 'Forum not found'}, status=404)
 
         thread = self.get_thread(forum, thread_title_slug)
@@ -2395,7 +3621,6 @@ class PollVoteView(View):
     
             return JsonResponse({'status': 'error', 'message': 'Poll not found'}, status=404)
 
-        # Get the selected poll option from the POST data
         option_id = request.POST.get('option_id')
     
         if not option_id:
@@ -2408,33 +3633,38 @@ class PollVoteView(View):
     
             return JsonResponse({'status': 'error', 'message': 'Poll option not found'}, status=404)
 
-        # Check if the user has already voted on this option.
-        if request.user in option.voted_users.all():
+        if request.user in poll.voted_users.all():
     
-            return JsonResponse({'status': 'error', 'message': 'You have already voted!'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'You have already voted on this poll!'}, status=400)
 
-        # Register the vote
         option.votes += 1
     
-        option.voted_users.add(request.user)
+        poll.voted_users.add(request.user)
     
         option.save()
 
-        # Return success JSON with the updated vote count
         return JsonResponse({'status': 'success', 'votes': option.votes})
 
 @method_decorator(login_required, name='dispatch')
 class AddPollView(View):
-
     """
-    Allow staff users to add a poll to a thread.
-    Renders a form for the poll question and its options,
-    then validates and saves the poll and its options.
+    Allow staff users to add a poll to an existing thread.
+
+    Provides a form for entering a poll question and multiple options (between 2 and 5), validates
+    the input, and saves the poll and its options atomically. Only staff members can access this view.
     """
 
     def get_forum(self, forum_name_slug):
+        """
+        Retrieve the forum object based on its slug.
 
-        # Retrieve the forum based on the slug.
+        Args:
+            forum_name_slug (str): The slug of the forum to fetch.
+
+        Returns:
+            Forum or None: The Forum object if found, otherwise None if the forum does not exist.
+        """
+
         try:
     
             return Forum.objects.get(slug=forum_name_slug)
@@ -2444,8 +3674,17 @@ class AddPollView(View):
             return None
 
     def get_thread(self, forum, thread_title_slug):
+        """
+        Retrieve the thread object within the specified forum.
 
-        # Retrieve the thread within the specified forum
+        Args:
+            forum: The Forum object containing the thread.
+            thread_title_slug (str): The slug of the thread to fetch.
+
+        Returns:
+            Thread or None: The Thread object if found, otherwise None if the thread does not exist.
+        """
+
         try:
     
             return Thread.objects.get(slug=thread_title_slug, forum=forum)
@@ -2455,8 +3694,21 @@ class AddPollView(View):
             return None
 
     def get(self, request, forum_name_slug, thread_title_slug):
+        """
+        Display the poll creation form for staff users.
 
-        # Only staff members are allowed to add a poll
+        Fetches the forum and thread, initializes a poll form and an option formset (with a minimum
+        of 2 and maximum of 5 options), and renders the form page. Redirects non-staff users to the homepage.
+
+        Args:
+            request: The HTTP request object containing user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread to add the poll to.
+
+        Returns:
+            HttpResponse: Rendered add_poll.html template or redirect if not staff.
+        """
+
         if not request.user.is_staff:
     
             return redirect(reverse('main:index'))
@@ -2465,13 +3717,15 @@ class AddPollView(View):
 
         thread = self.get_thread(forum, thread_title_slug)
 
-        # Instantiate an empty poll form.
+        if not thread:
+            
+            return render(request, 'main/add_poll.html', {'thread': None})
+
         poll_form = PollForm()
 
-        # Create a formset for poll options with a minimum of 2 and maximum of 5 options
         PollOptionFormSet = formset_factory(PollOptionForm, extra=0, min_num=2, max_num=5)
 
-        option_formset = PollOptionFormSet()
+        option_formset = PollOptionFormSet(initial=[{}, {}])
 
         context_dict = {
             'forum': forum,
@@ -2483,7 +3737,22 @@ class AddPollView(View):
         return render(request, 'main/add_poll.html', context_dict)
 
     def post(self, request, forum_name_slug, thread_title_slug):
-        # Ensure only staff can post a poll
+        """
+        Process the poll creation form submission and save the poll with its options.
+
+        Validates the poll question and options, ensures the number of options is between 2 and 5,
+        and saves everything in a transaction. Redirects to the thread detail page on success or
+        re-renders the form with errors if validation fails.
+
+        Args:
+            request: The HTTP request object containing POST data and user session.
+            forum_name_slug (str): The slug of the forum containing the thread.
+            thread_title_slug (str): The slug of the thread to add the poll to.
+
+        Returns:
+            HttpResponse: Redirect to thread detail page on success, or re-rendered form on failure.
+        """
+
         if not request.user.is_staff:
         
             return redirect(reverse('main:index'))
@@ -2492,38 +3761,61 @@ class AddPollView(View):
 
         thread = self.get_thread(forum, thread_title_slug)
 
-        # Bind the poll form and the option formset to the POST data
+        if not thread:
+
+            return render(request, 'main/add_poll.html', {'thread': None})
+
         poll_form = PollForm(request.POST)
 
         PollOptionFormSet = formset_factory(PollOptionForm, extra=0, min_num=2, max_num=5)
         
         option_formset = PollOptionFormSet(request.POST)
 
-        # Validate both forms.
         if poll_form.is_valid() and option_formset.is_valid():
-        
-            poll = poll_form.save(commit=False)
+                
+            try:
 
-            # Associate the poll with the current thread.
-            poll.thread = thread
+                with transaction.atomic():
         
-            poll.save()
+                    poll = Poll(thread=thread, question=poll_form.cleaned_data['question'])
+                
+                    poll.save(skip_validation=True)
 
-            # Iterate over each poll option form and save if valid.
-            for option_form in option_formset:
-        
-                if option_form.cleaned_data.get("option_text"):
-        
-                    option = option_form.save(commit=False)
-        
-                    option.poll = poll
-        
-                    option.save()
+                    options = []
 
-            # Redirect to the thread detail page after successful poll creation
-            return redirect('main:thread_detail', forum_name_slug=forum.slug, thread_title_slug=thread.slug)
+                    for option_form in option_formset:
+                
+                        if option_form.cleaned_data.get("option_text"):
 
-        # If validation fails, re-render the form with errors
+                            option = PollOption(
+                                poll=poll,
+                                option_text=option_form.cleaned_data['option_text']
+                            )
+
+                            option.save()
+                
+                            options.append(option)
+                                    
+                    poll.full_clean()
+
+                    if len(options) < Poll.MIN_OPTIONS:
+
+                        raise ValidationError(f'A poll must have at least {Poll.MIN_OPTIONS} options.')
+                        
+                    if len(options) > Poll.MAX_OPTIONS:
+
+                        raise ValidationError(f'A poll cannot have more than {Poll.MAX_OPTIONS} options.')
+
+                return redirect('main:thread_detail', forum_name_slug=forum.slug, thread_title_slug=thread.slug)
+
+            except ValidationError as e:
+
+                if poll.pk:
+                    
+                    poll.delete()
+
+                poll_form.add_error(None, e)
+
         context_dict = {
             'forum': forum,
             'thread': thread,
@@ -2534,17 +3826,34 @@ class AddPollView(View):
         return render(request, 'main/add_poll.html', context_dict)
 
 class SearchView(View):
-
     """
-    Process search queries across articles and threads.
-    Filters articles and threads based on the query string and renders the search results
+    Handle search queries to find matching articles and threads across the platform.
+
+    Processes a search term provided via GET request, searches article titles, summaries, and content,
+    as well as thread titles and topics, and displays the results on a dedicated search page.
     """
 
     def get(self, request, *args, **kwargs):
+        """
+        Process the search query and render the results page.
+
+        Extracts the search term from the query string, performs case-insensitive searches on articles
+        and threads, and returns a page with the matching results. If no query is provided, it returns
+        empty result sets.
+
+        Args:
+            request: The HTTP request object containing GET parameters.
+            *args: Variable length argument list (unused).
+            **kwargs: Arbitrary keyword arguments (unused).
+
+        Returns:
+            HttpResponse: Rendered search_results.html template with search results.
+        """
         
         query = request.GET.get('q', '')
         
         if query:
+
             # Search for articles where the query is present in title, summary, or content
             articles = Article.objects.filter(
                 Q(title__icontains=query) | 
@@ -2564,7 +3873,6 @@ class SearchView(View):
         
             threads = []
 
-        # Prepare the context with the query and results
         context_dict = {
             'query': query,
             'articles': articles,
@@ -2574,11 +3882,18 @@ class SearchView(View):
         return render(request, 'main/search_results.html', context_dict)
 
 def get_category_list(max_results=0, contains=''):
-
     """
-    Return a list of categories
-    If 'contains' is provided, filter categories whose names contain the term.
-    Limit the number of results if max_results is set.
+    Retrieve a list of categories, optionally filtered by a search term.
+
+    Fetches all categories ordered by name, or filters them based on a provided term if specified.
+    Limits the result set if a maximum number of results is provided.
+
+    Args:
+        max_results (int): Maximum number of categories to return (0 for unlimited).
+        contains (str): Term to filter category names by (case-insensitive).
+
+    Returns:
+        QuerySet: A list of Category objects matching the criteria.
     """
 
     category_list = []
@@ -2601,10 +3916,19 @@ def get_category_list(max_results=0, contains=''):
 
 def get_forum_list(max_results=0, contains=''):
     """
-    Return a list of forums
-    If 'contains' is provided, filter forums whose names contain the term.
-    Limit the number of results if max_results is set.
+    Retrieve a list of forums, optionally filtered by a search term.
+
+    Fetches all forums ordered by name, or filters them based on a provided term if specified.
+    Limits the result set if a maximum number of results is provided.
+
+    Args:
+        max_results (int): Maximum number of forums to return (0 for unlimited).
+        contains (str): Term to filter forum names by (case-insensitive).
+
+    Returns:
+        QuerySet: A list of Forum objects matching the criteria.
     """
+
     forum_list = []
     
     if contains:
@@ -2624,13 +3948,26 @@ def get_forum_list(max_results=0, contains=''):
     return forum_list
 
 class CategoryForumSuggestionView(View):
-
     """
-    Provide suggestions for categories and forums based on a partial search term.
-    Returns rendered HTML snippets for use in an AJAX response.
+    Provide dynamic suggestions for categories and forums based on a partial search term.
+
+    Handles AJAX requests to supply a list of up to 5 matching categories and forums as the user types.
+    Returns rendered HTML snippets that can be used in an autocomplete or suggestion dropdown on the frontend.
     """
 
     def get(self, request):
+        """
+        Generate and return category and forum suggestions as HTML snippets via AJAX.
+
+        Extracts the partial search term from the query string, fetches matching categories and forums
+        (up to 5 each), renders them into HTML templates, and returns the results as a JSON response.
+
+        Args:
+            request: The HTTP request object containing the 'suggestion' GET parameter.
+
+        Returns:
+            JsonResponse: JSON object containing rendered HTML for categories and forums.
+        """
     
         suggestion = request.GET.get('suggestion', '')
 

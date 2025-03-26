@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 {% extends 'main/base.html' %}
-{% load staticfiles %}
+{% load static %}
 
 {% block title_block %}
     {% if article %}
@@ -99,8 +99,8 @@
                         <div class="card-body">
                             <div class="card-text">
                                 <div class="container">
-                                    {% if article.article_picture %}
-                                        <img src="{{ MEDIA_URL }}{{ article.article_picture }}" class="img-fluid" alt="Article Picture"><br /><br />
+                                    {% if article.article_image %}
+                                        <img src="{{ MEDIA_URL }}{{ article.article_image }}" class="img-fluid" alt="Article Picture"><br /><br />
                                     {% endif %}
                                 </div>
                                 

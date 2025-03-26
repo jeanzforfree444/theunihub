@@ -3,11 +3,10 @@ import requests
 
 
 def read_bing_key():
-
     """
     Reads the Bing API key from a file.
 
-    Attempts to open 'bing.key' first, then '../bing.key' if the first attempt fails.
+    Attempts to open 'search.key' first, then '../search.key' if the first attempt fails.
     Raises an IOError if neither file can be opened, or a KeyError if the key is empty.
 
     Returns:
@@ -18,7 +17,7 @@ def read_bing_key():
 
     try:
 
-        with open('bing.key', 'r') as f:
+        with open('search.key', 'r') as f:
 
             bing_api_key = f.readline().strip()
 
@@ -26,13 +25,13 @@ def read_bing_key():
 
         try:
 
-            with open('../bing.key', 'r') as f:
+            with open('../search.key', 'r') as f:
 
                 bing_api_key = f.readline().strip()
 
         except:
 
-            raise IOError('bing.key file not found')
+            raise IOError('search.key file not found')
     
     if not bing_api_key:
 
@@ -41,7 +40,6 @@ def read_bing_key():
     return bing_api_key
 
 def run_query(search_terms):
-
     """
     Runs a search query using Bing's Web Search API.
 
@@ -54,27 +52,29 @@ def run_query(search_terms):
 
     bing_key = read_bing_key()
 
-    #Define the Bing search API endpoint
+    # Define the Bing search API endpoint
     search_url = 'https://api.bing.microsoft.com/v7.0/search'
 
     headers = {'Ocp-Apim-Subscription-Key': bing_key}
 
     params = {'q': search_terms, 'textDecorations': True, 'textFormat': 'HTML'}
 
-    #Make the GET request to the Bing API
+    # Make the GET request to the Bing API
     response = requests.get(search_url, headers=headers, params=params)
 
-    response.raise_for_status() #Raise an error for any unsuccessful HTTP response
+    response.raise_for_status() # Raise an error for any unsuccessful HTTP response
 
-    #Parse the JSON response into a Python dictionary
+    # Parse the JSON response into a Python dictionary
     search_results = response.json()
 
     results = []
 
     if 'webPages' in search_results:
-        #Loop through each search result provided by Bing
+
+        # Loop through each search result provided by Bing
         for result in search_results['webPages']['value']:
-            #Append a formatted dictionary of the result to the list
+
+            # Append a formatted dictionary of the result to the list
             results.append({
                 'title': result['name'],
                 'link': result['url'],
@@ -84,7 +84,6 @@ def run_query(search_terms):
     return results
 
 def main():
-
     """
     Main function that prompts the user for search terms,
     runs the query using Bing's API, and prints the results.
@@ -96,7 +95,7 @@ def main():
 
     print(json.dumps(results, indent=2))
 
-#This condition ensures that main() is only executed when this script is run directly,
+# This condition ensures that main() is only executed when this script is run directly,
 # and not when it is imported as a module in another script
 if __name__ == '__main__':
 
